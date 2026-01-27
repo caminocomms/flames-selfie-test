@@ -29,13 +29,6 @@
     <img src="https://cdn.prod.website-files.com/67ab2a95777a506d08092426/67ab312121d804a41517cf6e_AIP%20Logo-min.png" alt="AIP Logo">
   </div>
 
-  <div class="camera">
-    <video id="video" autoplay></video>
-    <button id="captureButton">Take photo</button>
-    <canvas id="canvas" style="display:none;"></canvas>
-    <img id="photo" src="" alt="The screen capture will appear in this box." />
-  </div>
-
   <div class="container quiz-container">
     <form id="quiz-form">
       <div id="quiz-stage"></div>
@@ -64,6 +57,33 @@
             <p class="welcome-tagline">It's fast. It's fun. It's (mostly) scientifically sound.</p>
             
             <button type="button" id="start-quiz-btn" class="start-button">Start Quiz</button>
+          </div>
+        </div>
+      </template>
+
+      <template id="photo-template">
+        <div class="question-page active" id="photo-page">
+          <div class="question">
+            <h2>Add your photo to unlock your result</h2>
+            <p class="welcome-intro">Upload a photo, take one with your webcam, or skip to keep the character image.</p>
+            <div class="photo-actions">
+              <label class="upload-photo-btn">
+                Upload photo
+                <input type="file" id="photo-upload" accept="image/*" hidden>
+              </label>
+              <button type="button" class="take-photo-btn" id="start-camera">Take photo</button>
+              <button type="button" class="skip-photo-btn secondary" id="skip-photo">Skip photo</button>
+            </div>
+            <div class="camera" id="camera-panel">
+              <video id="video" autoplay playsinline></video>
+              <canvas id="canvas" style="display:none;"></canvas>
+              <img id="capture-preview" alt="Photo preview" style="display:none;" />
+              <div class="camera-actions">
+                <button type="button" id="captureButton">Capture</button>
+                <button type="button" id="retakeButton" class="secondary" style="display:none;">Retake</button>
+                <button type="button" id="usePhotoButton" style="display:none;">Use photo</button>
+              </div>
+            </div>
           </div>
         </div>
       </template>
@@ -118,9 +138,9 @@
         <div class="question-page results-celebration active" id="results-page">
           <div class="question">
             <div class="results-layout">
-              <div class="persona-image-container">
-                <img id="persona-image" src="" alt="" class="persona-image">
-              </div>
+            <div class="persona-image-container">
+              <img id="persona-image" src="" alt="" class="persona-image">
+            </div>
               
               <div class="persona-content">
                 <h2 id="persona-title">You're [Persona Name]!</h2>
@@ -140,10 +160,8 @@
                     <span>Progressive</span>
                   </div>
                 </div>
-              </div>
             </div>
-
-
+          </div>
 
             <div class="share-box">
               <h3>Share your mindset</h3>

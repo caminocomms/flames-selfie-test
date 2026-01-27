@@ -14,78 +14,58 @@ function renderPartial(templateId, mountId) {
     }
 }
 
-function initCamera() {
-    const canvas = document.getElementById('canvas');
-    const photo = document.getElementById('photo');
-    const captureButton = document.getElementById('captureButton');
-    const video = document.getElementById('video');
-
-    if (!canvas || !photo || !captureButton || !video) {
-        return;
+function submitPhotoToFal(fileBlob, persona) {
+    const formData = new FormData();
+    formData.append("photo", fileBlob, "photo.png");
+    formData.append("character", persona.characterId || "groc");
+    if (persona.prompt) {
+        formData.append("prompt", persona.prompt);
     }
 
-    async function startCamera() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: 'environment'
-                }
-            });
-            video.srcObject = stream;
-            await video.play();
-        } catch (err) {
-            console.error("Error accessing the camera, err");
-            alert("Error accessing the camera: " + err.message);
-        }
-    }
+    logToServer({
+        event: 'fal_request_started',
+        persona: persona?.name,
+        character: persona?.characterId,
+        prompt: persona?.prompt
+    });
 
-    async function captureAndSend() {
-        const context = canvas.getContext('2d');
-        if (video.readyState < 2 || video.videoWidth === 0) {
-            alert("Camera not ready yet. Please wait a moment and try again.");
-            return;
-        }
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        photo.src = canvas.toDataURL("image/png");
-
-        canvas.toBlob(async (blob) => {
-            if (!blob) {
-                alert("Failed to capture image.");
-                return;
-            }
-
-            const result = window.aipQuizResult || {};
-            const formData = new FormData();
-            formData.append("photo", blob, "webcam.png");
-            formData.append("character", result.character || "groc");
-            if (result.prompt) {
-                formData.append("prompt", result.prompt);
-            }
-
-            try {
-                const response = await fetch("/api/generate", {
-                    method: "POST",
-                    body: formData
+    return fetch("/api/generate", {
+        method: "POST",
+        body: formData
+    })
+        .then(async (response) => {
+            if (!response.ok) {
+                const errorText = await response.text();
+                logToServer({
+                    event: 'fal_request_failed',
+                    status: response.status,
+                    detail: errorText
                 });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(errorText || "Request failed");
-                }
-
-                const result = await response.json();
-                photo.src = result.image_url;
-            } catch (err) {
-                console.error("Error generating image", err);
-                alert("Error generating image: " + err.message);
+                throw new Error(errorText || "Request failed");
             }
-        }, "image/png");
-    }
+            return response.json();
+        })
+        .then((result) => {
+            logToServer({
+                event: 'fal_request_succeeded',
+                imageUrl: result?.image_url
+            });
+            return result;
+        });
+}
 
-    captureButton.addEventListener('click', captureAndSend);
-    startCamera();
+function logToServer(payload) {
+    try {
+        fetch('/api/log', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        }).catch(() => null);
+    } catch (err) {
+        // best-effort logging only
+    }
 }
 
 function initQuiz() {
@@ -284,7 +264,7 @@ function initQuiz() {
 
 Think you're more cautious or more progressive than me? Take the quiz and compare your mindset 👇
 
-Discover your pharma AI mindset and get an exclusive discount for Adventures In Pharma (1 July, London): ${quizUrl}
+Discover your pharma AI mindset and get an exclusive discount for Adventures In Pharma (30th April, London): ${quizUrl}
 `;
 
         // Set the textarea value with a small delay to ensure it's ready
@@ -319,6 +299,62 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
         // Add click-to-copy functionality to both elements
         textarea.addEventListener('click', copyToClipboard);
         copyButton.addEventListener('click', copyToClipboard);
+    }
+
+    function setupDiscountCodeCopy() {
+        const discountCodeElement = document.getElementById('discount-code');
+        if (!discountCodeElement) {
+            return;
+        }
+
+        discountCodeElement.addEventListener('click', async function () {
+            const originalText = this.textContent;
+
+            try {
+                await navigator.clipboard.writeText(originalText);
+
+                this.style.transition = 'opacity 0.2s ease';
+                this.style.opacity = '0';
+
+                setTimeout(() => {
+                    this.textContent = 'Copied!';
+                    this.style.opacity = '1';
+                }, 200);
+
+                setTimeout(() => {
+                    this.style.opacity = '0';
+                    setTimeout(() => {
+                        this.textContent = originalText;
+                        this.style.opacity = '1';
+                    }, 200);
+                }, 2000);
+
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                const textArea = document.createElement('textarea');
+                textArea.value = originalText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+
+                this.style.transition = 'opacity 0.2s ease';
+                this.style.opacity = '0';
+
+                setTimeout(() => {
+                    this.textContent = 'Copied!';
+                    this.style.opacity = '1';
+                }, 200);
+
+                setTimeout(() => {
+                    this.style.opacity = '0';
+                    setTimeout(() => {
+                        this.textContent = originalText;
+                        this.style.opacity = '1';
+                    }, 200);
+                }, 2000);
+            }
+        });
     }
 
     async function downloadPersonaImage(persona) {
@@ -464,11 +500,27 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
         renderPartial('loading-template', 'quiz-stage');
     }
 
-    function renderResults(score, persona) {
+    function renderResults(score, persona, imageOverride) {
         renderPartial('results-template', 'quiz-stage');
 
+        console.log('[AIP Quiz] Results', {
+            score,
+            persona: persona?.name,
+            mindset: persona?.mindsetType,
+            prompt: persona?.prompt,
+            imageOverride: Boolean(imageOverride)
+        });
+        logToServer({
+            event: 'results_rendered',
+            score,
+            persona: persona?.name,
+            mindset: persona?.mindsetType,
+            prompt: persona?.prompt,
+            imageOverride: Boolean(imageOverride)
+        });
+
         // Update persona content
-        document.getElementById('persona-image').src = persona.image;
+        document.getElementById('persona-image').src = imageOverride || persona.image;
         document.getElementById('persona-image').alt = `${persona.name} - AI Adventure Profile`;
         document.getElementById('share-preview-image').src = persona.shareImage;
         document.getElementById('share-preview-image').alt = `${persona.name} share image`;
@@ -523,9 +575,30 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
             return;
         }
 
+        console.log('[AIP Quiz] Preparing results', {
+            score,
+            persona: persona?.name,
+            prompt: persona?.prompt
+        });
+        logToServer({
+            event: 'results_preparing',
+            score,
+            persona: persona?.name,
+            prompt: persona?.prompt
+        });
+
+        setState('photo', { score, persona });
+    }
+
+    function renderPhotoStep(score, persona) {
+        renderPartial('photo-template', 'quiz-stage');
+        setupPhotoCaptureStep(score, persona);
+    }
+
+    function transitionToResults(score, persona, imageOverride) {
         renderLoading();
         setTimeout(() => {
-            renderResults(score, persona);
+            renderResults(score, persona, imageOverride);
         }, 3000);
     }
 
@@ -545,8 +618,13 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
             return;
         }
 
+        if (nextState === 'photo') {
+            renderPhotoStep(payload.score, payload.persona);
+            return;
+        }
+
         if (nextState === 'results') {
-            renderResults(payload.score, payload.persona);
+            renderResults(payload.score, payload.persona, payload.imageOverride);
         }
     }
 
@@ -588,6 +666,142 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
         }
         answers[currentQuestion] = parseInt(target.value);
         updateNavState();
+    }
+
+    function setupPhotoCaptureStep(score, persona) {
+        const uploadInput = document.getElementById('photo-upload');
+        const startCameraBtn = document.getElementById('start-camera');
+        const skipPhotoBtn = document.getElementById('skip-photo');
+        const cameraPanel = document.getElementById('camera-panel');
+        const captureButton = document.getElementById('captureButton');
+        const retakeButton = document.getElementById('retakeButton');
+        const usePhotoButton = document.getElementById('usePhotoButton');
+        const previewImage = document.getElementById('capture-preview');
+        const canvas = document.getElementById('canvas');
+        const video = document.getElementById('video');
+
+        if (!uploadInput || !startCameraBtn || !skipPhotoBtn || !cameraPanel || !captureButton || !retakeButton || !usePhotoButton || !previewImage || !canvas || !video) {
+            return;
+        }
+
+        cameraPanel.style.display = 'none';
+        let stream = null;
+        let capturedBlob = null;
+
+        const stopCamera = () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            cameraPanel.style.display = 'none';
+        };
+
+        const resetCaptureUi = () => {
+            capturedBlob = null;
+            previewImage.src = '';
+            previewImage.style.display = 'none';
+            video.style.display = 'block';
+            captureButton.style.display = 'inline-block';
+            retakeButton.style.display = 'none';
+            usePhotoButton.style.display = 'none';
+        };
+
+        startCameraBtn.addEventListener('click', async () => {
+            try {
+                logToServer({ event: 'photo_camera_start' });
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment'
+                    }
+                });
+                video.srcObject = stream;
+                await video.play();
+                cameraPanel.style.display = 'block';
+                resetCaptureUi();
+            } catch (err) {
+                console.error("Error accessing the camera, err");
+                alert("Error accessing the camera: " + err.message);
+            }
+        });
+
+        captureButton.addEventListener('click', async () => {
+            if (video.readyState < 2 || video.videoWidth === 0) {
+                alert("Camera not ready yet. Please wait a moment and try again.");
+                return;
+            }
+
+            logToServer({ event: 'photo_capture_clicked' });
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob(async (blob) => {
+                if (!blob) {
+                    alert("Failed to capture image.");
+                    return;
+                }
+                capturedBlob = blob;
+                previewImage.src = canvas.toDataURL("image/png");
+                previewImage.style.display = 'block';
+                video.style.display = 'none';
+                captureButton.style.display = 'none';
+                retakeButton.style.display = 'inline-block';
+                usePhotoButton.style.display = 'inline-block';
+                logToServer({ event: 'photo_capture_ready' });
+            }, "image/png");
+        });
+
+        retakeButton.addEventListener('click', () => {
+            logToServer({ event: 'photo_retake' });
+            resetCaptureUi();
+        });
+
+        usePhotoButton.addEventListener('click', async () => {
+            if (!capturedBlob) {
+                return;
+            }
+            logToServer({ event: 'photo_use_clicked' });
+            try {
+                stopCamera();
+                renderLoading();
+                const result = await submitPhotoToFal(capturedBlob, persona);
+                renderResults(score, persona, result.image_url);
+            } catch (err) {
+                console.error("Error generating image", err);
+                alert("Error generating image: " + err.message);
+                setState('photo', { score, persona });
+            }
+        });
+
+        uploadInput.addEventListener('change', async (event) => {
+            const file = event.target.files && event.target.files[0];
+            if (!file) {
+                return;
+            }
+            logToServer({
+                event: 'photo_upload_selected',
+                fileName: file.name,
+                fileSize: file.size,
+                fileType: file.type
+            });
+            try {
+                stopCamera();
+                renderLoading();
+                const result = await submitPhotoToFal(file, persona);
+                renderResults(score, persona, result.image_url);
+            } catch (err) {
+                console.error("Error generating image", err);
+                alert("Error generating image: " + err.message);
+                setState('photo', { score, persona });
+            }
+        });
+
+        skipPhotoBtn.addEventListener('click', () => {
+            logToServer({ event: 'photo_skipped' });
+            stopCamera();
+            transitionToResults(score, persona);
+        });
     }
 
     // Form submission
@@ -633,7 +847,6 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
 }
 
 function initApp() {
-    initCamera();
     initQuiz();
 }
 

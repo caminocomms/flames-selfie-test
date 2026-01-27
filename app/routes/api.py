@@ -2,11 +2,14 @@ import os
 from pathlib import Path
 import tempfile
 
+import logging
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from app.clients.fal_client import FalAPIClient
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 CHAR_DIR = "app/static/characters"
 
@@ -31,3 +34,9 @@ async def generate_image(
         temp_path.unlink(missing_ok=True)
 
     return {"image_url": image_url}
+
+
+@router.post("/log")
+async def log_client_event(payload: dict) -> dict:
+    logger.info("client_event %s", payload)
+    return {"ok": True}
