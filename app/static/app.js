@@ -1,3 +1,40 @@
+const XANO_BASE_URL = "https://xzqt-mxe3-bdgf.p7.xano.io/api:lLmtpgpS";
+const QUIZ_RESULT_URL = `${XANO_BASE_URL}/quiz_result`;
+const WORKSHOP_API_URL = "https://xzqt-mxe3-bdgf.p7.xano.io/api:QpHvEgrd/get_workshops";
+const RSVP_LOOKUP_URL = "https://xzqt-mxe3-bdgf.p7.xano.io/api:QpHvEgrd/rspv/lookup";
+const CHARACTERS_DIR = "/static/characters-2.0"
+const SHARE_DIR = "/static/sharegraphics"
+const LINKEDIN_URL = "https://www.linkedin.com/feed/?shareActive=true&text=I%20just%20discovered%20my%20pharma%20AI%20mindset%E2%80%A6"
+
+
+const PROMPT = `Transform the person from the webcam or uploaded photo into a fully illustrated comic-book character based on the supplied reference character.
+
+IDENTITY & FACE
+- Preserve ONLY the guest's facial identity: facial structure, expression, skin tone, and hairstyle.
+- Re-illustrate the guest's face in the same comic-book art style as the reference character.
+- Do NOT reuse, paste, or overlay the photo face. The face must be fully redrawn.
+
+BODY, OUTFIT & STYLE
+- Use the reference character as the complete source for body shape, outfit, pose, proportions, line work, and colour palette.
+- Ignore the reference character's face and hair entirely.
+- Ignore the guest's real clothing, background, lighting, and camera artifacts.
+
+STYLE CONSISTENCY
+- The entire character (face and body) must be a single cohesive illustration.
+- No photo realism, no mixed media, no compositing, no visible seams.
+- Match the reference character's comic style, outlines, shading method, and rendering quality.
+
+BACKGROUND & OUTPUT
+- Output a transparent background exactly like the reference PNG.
+- No background elements, no shadows, no environment.
+
+HARD CONSTRAINTS (do not violate)
+- Do not cut and paste the guest's head.
+- Do not retain the guest's real outfit.
+- Do not introduce logos, text, or typography.
+- Do not include photographic textures or lighting.
+`;
+
 function renderPartial(templateId, mountId) {
     const template = document.getElementById(templateId);
     const mount = document.getElementById(mountId);
@@ -18,15 +55,13 @@ function submitPhotoToFal(fileBlob, persona) {
     const formData = new FormData();
     formData.append("photo", fileBlob, "photo.png");
     formData.append("character", persona.characterId || "groc");
-    if (persona.prompt) {
-        formData.append("prompt", persona.prompt);
-    }
+    formData.append("prompt", PROMPT);
 
     logToServer({
         event: 'fal_request_started',
         persona: persona?.name,
         character: persona?.characterId,
-        prompt: persona?.prompt
+        prompt: PROMPT
     });
 
     return fetch("/api/generate", {
@@ -69,69 +104,24 @@ function logToServer(payload) {
 }
 
 function initQuiz() {
-    const quizForm = document.getElementById('quiz-form');
-    const quizStage = document.getElementById('quiz-stage');
-    if (!quizForm || !quizStage) {
-        return;
+    const workshopForm = document.getElementById('workshop-form');
+    const workshopStage = document.getElementById('workshop-stage');
+    if (!workshopForm || !workshopStage) {
+        return; ƒ
     }
 
-    // Note: reverse === true when a “strongly disagree” response is interpreted as an AI-positive stance.
-    const quizData = {
-        1: {
-            question: "I believe AI will replace most human jobs in pharma marketing and communications (sooner rather than later).",
-            explainer: "A February 2025 Pew Research Center survey found 52% of U.S. workers feel worried about future AI use in the workplace and 32% think it will reduce job opportunities (<a href='https://www.pewresearch.org/social-trends/2025/02/25/u-s-workers-are-more-worried-than-hopeful-about-future-ai-use-in-the-workplace/' target='_blank'>Pew Research Center, 2025</a>).",
-            reverse: true
-        },
-        2: {
-            question: "I believe AI in pharma is overhyped “snake oil” with little real payoff.",
-            explainer: "The AI Snake Oil blog argues that much of today’s AI hype is overstated and better viewed as ‘normal technology’ (<a href='https://www.aisnakeoil.com/p/ai-as-normal-technology' target='_blank'>AI Snake Oil, 2024</a>).",
-            reverse: true
-        },
-        3: {
-            question: "I believe by 2027, AI will be running the show – it’ll outperform humans at almost every task in pharma.",
-            explainer: "The speculative “AI 2027” scenario predicts super-human systems eclipsing people across pharma tasks within two years (<a href='https://ai-2027.com/' target='_blank'>AI-2027, 2025</a>).",
-            reverse: false
-        },
-        4: {
-            question: "I believe I can trust generative AI (e.g., ChatGPT) to produce accurate and reliable medical content.",
-            explainer: "Elsevier’s 2024 ‘Attitudes toward AI’ study shows 95% of researchers and 93% of clinicians expect AI will also spread medical misinformation (<a href='https://www.elsevier.com/insights/attitudes-toward-ai' target='_blank'>Elsevier, 2024</a>).",
-            reverse: false
-        },
-        5: {
-            question: "I believe AI will improve the quality of content in pharma communications.",
-            explainer: "A 2024 Wolters Kluwer survey reports 81 % of physicians say generative AI improves care-team interactions and 68 % say it saves them time searching literature (<a href='https://assets.contenthub.wolterskluwer.com/api/public/content/2231207-gen-ai-infographic-pdf' target='_blank'>Wolters Kluwer, 2024</a>).",
-            reverse: false
-        },
-        6: {
-            question: "I believe we should be very cautious with AI in pharma marketing – better to hold off until all the compliance and privacy risks are addressed.",
-            explainer: "An April 2024 Fierce Pharma analysis found two-thirds of the world’s 20 largest pharmas have banned ChatGPT internally over data-security fears (<a href='https://www.fiercepharma.com/marketing/two-thirds-top-20-pharmas-have-banned-chatgpt-and-many-life-sci-call-ai-overrated-survey' target='_blank'>Fierce Pharma, 2024</a>).",
-            reverse: true
-        },
-        7: {
-            question: "I believe generative AI can create content — text, images, even videos — that’s as engaging as if a human made it.",
-            explainer: "Pfizer’s in-house “Charlie” platform is already generating marketing content for hundreds of brand teams (<a href='https://digiday.com/marketing/with-charlie-pfizer-is-building-a-new-generative-ai-platform-for-pharma-marketing/' target='_blank'>Digiday, 2024</a>).",
-            reverse: false
-        },
-        8: {
-            question: "I believe if you don’t embrace AI tools now, you’ll be left behind in the pharma industry.",
-            explainer: "McKinsey’s Q4 2024 survey found 85% of U.S. healthcare leaders were already piloting or deploying generative AI (<a href='https://www.mckinsey.com/industries/healthcare/our-insights/generative-ai-in-healthcare-current-trends-and-future-outlook' target='_blank'>McKinsey, 2025</a>).",
-            reverse: false
-        },
-        9: {
-            question: "I believe relying on AI too much will erode our own skills in critical thinking and judgement.",
-            explainer: "Experts warn that heavy AI reliance encourages “cognitive off-loading” and may dull human creativity (<a href='https://www.theguardian.com/technology/2025/apr/19/dont-ask-what-ai-can-do-for-us-ask-what-it-is-doing-to-us-are-chatgpt-and-co-harming-human-intelligence' target='_blank'>The Guardian, 2025</a>).",
-            reverse: true
-        },
-        10: {
-            question: "I’d trust an AI algorithm to guide important decisions in a pharma marketing campaign.",
-            explainer: "ZoomRx’s 2024 life-science survey found 81% predicted generative AI would boost campaign effectiveness, though 91% still feared data-security risks (<a href='https://www.zoomrx.com/reports/FERMA_State_of_AI_Report_April_2024.pdf' target='_blank'>ZoomRx, 2024</a>).",
-            reverse: false
-        }
-    };
+    const workshops = [
+        { id: 1, key: 'advanced-prompting', label: 'Advanced prompting for data mining' },
+        { id: 2, key: 'super-slides', label: 'Building super slides for MSLs and KAMs' },
+        { id: 3, key: 'vibecoding', label: 'Vibecoding in action' },
+        { id: 4, key: 'ai-tools', label: 'AI tools built for pharma teams' },
+        { id: 5, key: 'rare-disease', label: 'Smarter strategies for rare disease engagement' }
+    ];
 
-    const totalQuestions = 10;
-    const answers = {};
-    let currentQuestion = 1;
+    let selectedWorkshopKey = null;
+    const workshopCapacities = new Map();
+    let attendeeName = null;
+    let attendeeId = null;
 
     // Confetti generation
     function createConfetti() {
@@ -186,9 +176,8 @@ function initQuiz() {
             code: 'MACBOT',
             explanation: 'Your pharma AI mindset is skeptic. Like M.A.C.-Bot, you favour thoughtful, evidence-based approaches to AI adoption. You prioritise understanding fundamentals and proven results over chasing trends.',
             characterId: 'mac',
-            prompt: 'Turn the guest into a comic stylised version of M.A.C.-Bot, using the supplied reference character.',
-            image: '/static/characters/mac.png',
-            shareImage: '/static/sharegraphics/aip_im_mac.png'
+            image: `${CHARACTERS_DIR}/AIP_MAC.png`,
+            shareImage: `${SHARE_DIR}/aip_im_mac.png`
         },
         'nova': {
             name: 'Nova',
@@ -196,9 +185,8 @@ function initQuiz() {
             code: 'NOVA',
             explanation: 'Your pharma AI mindset is observer. Like Nova, you combine curiosity about AI\'s potential with healthy scepticism. You prefer observation and analysis before commitment, balancing optimism with realistic assessment.',
             characterId: 'nova',
-            prompt: 'Turn the guest into a comic stylised version of Nova, using the supplied reference character.',
-            image: '/static/characters/nova.png',
-            shareImage: '/static/sharegraphics/aip_im_nova.png'
+            image: `${CHARACTERS_DIR}/AIP_Nova.png`,
+            shareImage: `${SHARE_DIR}/aip_im_nova.png`
         },
         'groc': {
             name: 'Groc',
@@ -206,9 +194,8 @@ function initQuiz() {
             code: 'GROC',
             explanation: 'Your pharma AI mindset is realist. Like Groc, you balance optimism about AI\'s future with practical implementation concerns. You recognise potential while prioritising preparation and risk management.',
             characterId: 'groc',
-            prompt: 'Turn the guest into a comic stylised version of Groc, using the supplied reference character.',
-            image: '/static/characters/groc.png',
-            shareImage: '/static/sharegraphics/aip_im_groc.png'
+            image: `${CHARACTERS_DIR}/AIP_Groc.png`,
+            shareImage: `${SHARE_DIR}/aip_im_groc.png`
         },
         'jetpackjim': {
             name: 'Jetpack Jim',
@@ -216,9 +203,8 @@ function initQuiz() {
             code: 'JETPACKJIM',
             explanation: 'Your pharma AI mindset is enthusiast. Like Jetpack Jim, you are enthusiastic about AI\'s transformational potential in pharma. You favor quick adoption for competitive advantage while maintaining professional and ethical standards.',
             characterId: 'jim',
-            prompt: 'Turn the guest into a comic stylised version of Jetpack Jim, using the supplied reference character.',
-            image: '/static/characters/jim.png',
-            shareImage: '/static/sharegraphics/aip_im_jim.png'
+            image: `${CHARACTERS_DIR}/AIP_Jim.png`,
+            shareImage: `${SHARE_DIR}/aip_im_jim.png`
         },
         'vega': {
             name: 'Vega Callisto',
@@ -226,9 +212,8 @@ function initQuiz() {
             code: 'VEGA',
             explanation: 'Your pharma AI mindset is optimist. Like Vega Callisto, you are highly optimistic about AI\'s revolutionary potential. You view AI as fundamentally transforming pharmaceutical operations, from R&D to patient care.',
             characterId: 'vega',
-            prompt: 'Turn the guest into a comic stylised version of Vega Callisto, using the supplied reference character.',
-            image: '/static/characters/vega.png',
-            shareImage: '/static/sharegraphics/aip_im_vega.png'
+            image: `${CHARACTERS_DIR}/AIP_Vega.png`,
+            shareImage: `${SHARE_DIR}/aip_im_vega.png`
         },
         'dangerousdan': {
             name: 'Dangerous Dan',
@@ -236,20 +221,83 @@ function initQuiz() {
             code: 'DANGEROUSDAN',
             explanation: 'Your pharma AI mindset is progressive. Like Dangerous Dan, you fully embrace AI as revolutionary for pharmaceuticals. You view AI adoption as essential for competitive advantage and readily embrace cutting-edge technologies.',
             characterId: 'dan',
-            prompt: 'Turn the guest into a comic stylised version of Dangerous Dan, using the supplied reference character.',
-            image: '/static/characters/dan.png',
-            shareImage: '/static/sharegraphics/aip_im_dan.png'
+            image: `${CHARACTERS_DIR}/AIP_Dan.png`,
+            shareImage: `${SHARE_DIR}/aip_im_dan.png`
         }
     };
 
-    function getPersonaFromScore(score) {
-        if (score <= 16) return personas.macbot;
-        if (score <= 33) return personas.nova;
-        if (score <= 50) return personas.groc;
-        if (score <= 65) return personas.jetpackjim;
-        if (score <= 80) return personas.vega;
-        return personas.dangerousdan;
+    function getRandomPersona() {
+        const options = Object.values(personas);
+        if (options.length === 0) {
+            return null;
+        }
+        const index = Math.floor(Math.random() * options.length);
+        return options[index];
     }
+
+    function getRandomPersonas(count = 1) {
+        const pool = Object.values(personas);
+        if (pool.length < count) {
+            return [];
+        }
+        
+        // Using Fisher–Yates shuffle algo
+        // Premise: 
+        // - Walk from the end of the array and swap each element (i) with a randomly chosen element before it
+        // - Effectively we perform a random sort, then slice up to the number of elements to get random personas
+        for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        return pool.slice(0, count);
+    }
+
+    function getPersonaSet() {
+        const [persona, alt1, alt2] = getRandomPersonas(3);
+        if (!persona || !alt1 || !alt2) {
+            return null;
+        }
+        return { persona, alt1, alt2 };
+    }
+
+    function requestCompositeImage(centerUrl, leftPath, rightPath) {
+        return fetch('/api/composite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                center_url: centerUrl,
+                left_path: leftPath,
+                right_path: rightPath
+            })
+        })
+            .then(async (response) => {
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || 'Composite failed');
+                }
+                return response.json();
+            })
+            .then((data) => data?.image_data || null);
+    }
+
+    function wireCompositeDownload(button, dataUrl) {
+        if (!button) {
+            return;
+        }
+        button.disabled = !dataUrl;
+        if (!dataUrl) {
+            return;
+        }
+        button.onclick = () => {
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = 'aip-adventure-crew.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+    }
+
 
     function shareOnLinkedIn(persona) {
         const linkedInUrl = `https://www.linkedin.com/feed/?shareActive=true&text=I%20just%20discovered%20my%20pharma%20AI%20mindset%E2%80%A6`;
@@ -290,7 +338,7 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
                 }, 1500);
 
             } catch (err) {
-                console.error('Failed to copy text: ', err);
+                logToServer({ event: 'clipboard_copy_failed', detail: err?.message || String(err) });
                 // Fallback: select all text
                 textarea.select();
             }
@@ -330,7 +378,7 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
                 }, 2000);
 
             } catch (err) {
-                console.error('Failed to copy text: ', err);
+                logToServer({ event: 'clipboard_copy_failed', detail: err?.message || String(err) });
                 const textArea = document.createElement('textarea');
                 textArea.value = originalText;
                 document.body.appendChild(textArea);
@@ -377,7 +425,7 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
             // Clean up object URL
             window.URL.revokeObjectURL(url);
         } catch (error) {
-            console.error('Download failed:', error);
+            logToServer({ event: 'download_failed', detail: error?.message || String(error) });
             // Fallback to direct link
             const link = document.createElement('a');
             link.href = persona.shareImage;
@@ -401,32 +449,19 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
         return 'desktop';
     }
 
-    // Function to POST quiz results to Xano
-    async function postQuizResults(answersPayload, score, persona) {
+    // Function to POST workshop selection to Xano
+    async function postWorkshopSelection(workshop) {
+        if (!attendeeId) {
+            logToServer({ event: 'workshop_update_missing_attendee_id' });
+            return;
+        }
         const payload = {
-            created_at: new Date().toISOString(),
-            persona_type: persona.name,
-            score: score,
-            q1_answer: answersPayload[1] || 0,
-            q2_answer: answersPayload[2] || 0,
-            q3_answer: answersPayload[3] || 0,
-            q4_answer: answersPayload[4] || 0,
-            q5_answer: answersPayload[5] || 0,
-            q6_answer: answersPayload[6] || 0,
-            q7_answer: answersPayload[7] || 0,
-            q8_answer: answersPayload[8] || 0,
-            q9_answer: answersPayload[9] || 0,
-            q10_answer: answersPayload[10] || 0,
-            user_agent: navigator.userAgent,
-            browser_language: navigator.language,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            referrer_url: document.referrer || window.location.href,
-            device_type: getDeviceType()
+            workshop_id: workshop.id
         };
 
         try {
-            const response = await fetch('https://xzqt-mxe3-bdgf.p7.xano.io/api:lLmtpgpS/quiz_result', {
-                method: 'POST',
+            const response = await fetch(`https://xzqt-mxe3-bdgf.p7.xano.io/api:QpHvEgrd/user_reg/${attendeeId}`, {
+                method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -434,182 +469,256 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
             });
 
             if (!response.ok) {
-                console.error('Failed to submit quiz results:', response.status, response.statusText);
+                logToServer({
+                    event: 'workshop_update_failed',
+                    status: response.status,
+                    statusText: response.statusText
+                });
             } else {
-                console.log('Quiz results submitted successfully');
+                console.log('Workshop selection updated successfully');
             }
         } catch (error) {
-            console.error('Error submitting quiz results:', error);
+            logToServer({ event: 'workshop_update_error', detail: error?.message || String(error) });
         }
     }
 
-    function renderQuestion(questionNum, direction = 'forward') {
-        renderPartial('question-template', 'quiz-stage');
-        const page = quizStage.querySelector('.question-page');
-        if (!page) {
-            return;
+    async function loadWorkshopCapacities() {
+        try {
+            const response = await fetch(WORKSHOP_API_URL, {
+                method: 'GET'
+            });
+            if (!response.ok) {
+                logToServer({
+                    event: 'workshops_load_failed',
+                    status: response.status,
+                    statusText: response.statusText
+                });
+                return;
+            }
+            const data = await response.json();
+            if (!Array.isArray(data)) {
+                return;
+            }
+            data.forEach((item) => {
+                if (!item) {
+                    return;
+                }
+                const rawId = item.workshop_id ?? item.id;
+                const workshopId = typeof rawId === 'number' ? rawId : parseInt(rawId, 10);
+                if (!Number.isFinite(workshopId)) {
+                    return;
+                }
+                const rawSpots = item.spots_left ?? item.capacity;
+                const spotsLeft = typeof rawSpots === 'number' ? rawSpots : parseInt(rawSpots, 10);
+                if (Number.isFinite(spotsLeft)) {
+                    workshopCapacities.set(workshopId, spotsLeft);
+                }
+            });
+        } catch (error) {
+            logToServer({
+                event: "get_workshops_failed",
+                err: err.message
+            })
         }
-
-        currentQuestion = questionNum;
-        page.setAttribute('data-question', questionNum);
-
-        if (direction === 'forward') {
-            page.style.animation = 'slideInRight 0.4s ease-out';
-        } else {
-            page.style.animation = 'slideInLeft 0.4s ease-out';
-        }
-
-        const questionData = quizData[questionNum];
-        const questionTitle = page.querySelector('h2');
-        const explainerText = page.querySelector('.explainer');
-        const progressText = page.querySelector('.progress-text');
-        const progressBar = page.querySelector('.progress-bar');
-        const prevBtn = page.querySelector('.prev-btn');
-        const nextBtn = page.querySelector('.next-btn');
-        const submitBtn = page.querySelector('.submit-btn');
-
-        if (questionTitle) questionTitle.textContent = questionData.question;
-        if (explainerText) explainerText.innerHTML = questionData.explainer;
-        if (progressText) progressText.textContent = `${questionNum} / ${totalQuestions}`;
-        if (progressBar) progressBar.style.width = `${(questionNum / totalQuestions) * 100}%`;
-
-        if (prevBtn) prevBtn.disabled = questionNum === 1;
-
-        if (questionNum === totalQuestions) {
-            if (nextBtn) nextBtn.style.display = 'none';
-            if (submitBtn) submitBtn.style.display = 'inline-block';
-        } else {
-            if (nextBtn) nextBtn.style.display = 'inline-block';
-            if (submitBtn) submitBtn.style.display = 'none';
-        }
-
-        const inputs = page.querySelectorAll('input[type="radio"]');
-        inputs.forEach((input) => {
-            input.name = `q${questionNum}`;
-            input.checked = answers[questionNum] !== undefined && parseInt(input.value) === answers[questionNum];
-        });
-
-        updateNavState();
     }
 
-    function renderWelcome() {
-        renderPartial('welcome-template', 'quiz-stage');
+    async function lookupAttendee(token) {
+        if (!token) {
+            return null;
+        }
+        try {
+            const response = await fetch(RSVP_LOOKUP_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ token })
+            });
+            if (!response.ok) {
+                logToServer({
+                    event: 'attendee_lookup_failed',
+                    status: response.status,
+                    statusText: response.statusText
+                });
+                return null;
+            }
+            return await response.json();
+        } catch (error) {
+            logToServer({ event: 'attendee_lookup_error', detail: error?.message || String(error) });
+            return null;
+        }
+    }
+
+    function getWorkshopByKey(key) {
+        return workshops.find((workshop) => workshop.key === key);
+    }
+
+    function renderWorkshop() {
+        renderPartial('workshop-template', 'workshop-stage');
+        const greeting = workshopStage.querySelector('#workshop-greeting');
+        if (greeting) {
+            greeting.textContent = attendeeName ? `Welcome, ${attendeeName}` : 'Welcome';
+        }
+        const optionsContainer = workshopStage.querySelector('#workshop-options');
+        const submitBtn = workshopStage.querySelector('.submit-btn');
+
+        if (optionsContainer) {
+            optionsContainer.innerHTML = '';
+            workshops.forEach((workshop, index) => {
+                const optionId = `workshop-${index}`;
+                const label = document.createElement('label');
+                label.className = 'workshop-option';
+
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'workshop';
+                input.value = workshop.key;
+                input.id = optionId;
+                input.checked = selectedWorkshopKey === workshop.key;
+                const capacity = workshopCapacities.get(workshop.id);
+                const isFull = typeof capacity === 'number' && capacity <= 0;
+                input.disabled = isFull;
+                if (isFull) {
+                    label.classList.add('is-full');
+                }
+
+                const text = document.createElement('span');
+                text.textContent = workshop.label;
+
+                const capacityText = document.createElement('span');
+                capacityText.className = 'workshop-capacity';
+                if (typeof capacity === 'number') {
+                    capacityText.textContent = `${capacity} spots left`;
+                } else {
+                    capacityText.textContent = 'Capacity unavailable';
+                }
+
+                label.appendChild(input);
+                label.appendChild(text);
+                label.appendChild(capacityText);
+                optionsContainer.appendChild(label);
+            });
+        }
+
+        if (submitBtn) {
+            submitBtn.disabled = !selectedWorkshopKey;
+        }
     }
 
     function renderLoading() {
-        renderPartial('loading-template', 'quiz-stage');
+        renderPartial('loading-template', 'workshop-stage');
     }
 
-    function renderResults(score, persona, imageOverride) {
-        renderPartial('results-template', 'quiz-stage');
+    function renderResults(persona, imageOverride, alternates = {}) {
+        renderPartial('results-template', 'workshop-stage');
 
-        console.log('[AIP Quiz] Results', {
-            score,
-            persona: persona?.name,
-            mindset: persona?.mindsetType,
-            prompt: persona?.prompt,
-            imageOverride: Boolean(imageOverride)
-        });
+        // console.log('[AIP Quiz] Results', {
+        //     persona: persona?.name,
+        //     mindset: persona?.mindsetType,
+        //     prompt: PROMPT,
+        //     imageOverride: Boolean(imageOverride)
+        // });
         logToServer({
-            event: 'results_rendered',
-            score,
+            event: 'render_persona_result',
             persona: persona?.name,
             mindset: persona?.mindsetType,
-            prompt: persona?.prompt,
+            prompt: PROMPT,
             imageOverride: Boolean(imageOverride)
         });
 
-        // Update persona content
-        document.getElementById('persona-image').src = imageOverride || persona.image;
-        document.getElementById('persona-image').alt = `${persona.name} - AI Adventure Profile`;
-        document.getElementById('share-preview-image').src = persona.shareImage;
-        document.getElementById('share-preview-image').alt = `${persona.name} share image`;
-        document.getElementById('persona-title').textContent = `You're an AI ${persona.mindsetType}!`;
-        document.getElementById('persona-explanation').innerHTML = `${persona.explanation}`;
-        document.getElementById('discount-code').textContent = persona.code;
+        // Update persona image
+        const personaImage = document.getElementById('persona-image');
+        if (personaImage) {
+            personaImage.src = imageOverride || persona.image;
+            personaImage.alt = `${persona.name} - AI Adventure Profile`;
+        }
+
+        const greeting = document.getElementById('results-greeting');
+        if (greeting) {
+            greeting.textContent = attendeeName ? `Welcome, ${attendeeName}!` : 'Welcome!';
+        }
+
+        const confirmation = document.getElementById('results-confirmation');
+        if (confirmation) {
+            const workshop = getWorkshopByKey(selectedWorkshopKey);
+            confirmation.textContent = workshop
+                ? `You're confirmed for ${workshop.label}.`
+                : "You're confirmed for your workshop.";
+        }
+
+        const details = document.getElementById('results-details');
+        if (details) {
+            details.textContent = "We've saved your spot and will see you there.";
+        }
+
         window.aipQuizResult = {
-            prompt: persona.prompt,
+            prompt: PROMPT,
             character: persona.characterId
         };
-
-        // Position spectrum indicator based on score
-        const spectrumPosition = score; // 0-100
-        document.getElementById('spectrum-indicator').style.left = `${spectrumPosition}%`;
-
-        // Add LinkedIn sharing functionality
-        document.getElementById('share-linkedin').onclick = () => shareOnLinkedIn(persona);
-
-        // Add download image functionality
-        document.getElementById('download-image').onclick = () => downloadPersonaImage(persona);
-
-        // Setup share textarea with copy functionality
-        setupShareTextarea(persona);
-
-        // Setup discount code copy functionality
-        setupDiscountCodeCopy();
 
         setTimeout(() => {
             createConfetti();
         }, 200);
-    }
 
-    function updateNavState() {
-        const currentPage = quizStage.querySelector('.question-page');
-        if (!currentPage) {
-            return;
-        }
-        const nextBtn = currentPage.querySelector('.next-btn');
-        const submitBtn = currentPage.querySelector('.submit-btn');
-        const hasAnswer = answers[currentQuestion] !== undefined;
-
-        if (currentQuestion === totalQuestions) {
-            if (submitBtn) submitBtn.disabled = !hasAnswer;
+        const compositeImage = document.getElementById('composite-image');
+        const compositeButton = document.getElementById('download-composite');
+        const leftPersona = alternates?.left;
+        const rightPersona = alternates?.right;
+        if (compositeImage && leftPersona && rightPersona) {
+            const centerUrl = imageOverride || persona.image;
+            requestCompositeImage(centerUrl, leftPersona.image, rightPersona.image)
+                .then((dataUrl) => {
+                    if (!dataUrl) {
+                        wireCompositeDownload(compositeButton, null);
+                        return;
+                    }
+                    compositeImage.src = dataUrl;
+                    compositeImage.alt = `${persona.name} with ${leftPersona.name} and ${rightPersona.name}`;
+                    wireCompositeDownload(compositeButton, dataUrl);
+                })
+                .catch((err) => {
+                    logToServer({ event: 'composite_failed', detail: err?.message || String(err) });
+                    wireCompositeDownload(compositeButton, null);
+                });
         } else {
-            if (nextBtn) nextBtn.disabled = !hasAnswer;
+            wireCompositeDownload(compositeButton, null);
         }
     }
 
-    function showResults(score, persona, skipLoading = false) {
+    function showResults(persona, alternates, skipLoading = false) {
         if (skipLoading) {
-            renderResults(score, persona);
+            renderResults(persona, null, alternates);
             return;
         }
 
-        console.log('[AIP Quiz] Preparing results', {
-            score,
-            persona: persona?.name,
-            prompt: persona?.prompt
-        });
+        // console.log('[AIP Quiz] Preparing results', {
+        //     persona: persona?.name,
+        //     prompt: PROMPT
+        // });
         logToServer({
-            event: 'results_preparing',
-            score,
+            event: 'prepare_persona_prompt',
             persona: persona?.name,
-            prompt: persona?.prompt
+            prompt: PROMPT
         });
 
-        setState('photo', { score, persona });
+        setState('photo', { persona, alternates });
     }
 
-    function renderPhotoStep(score, persona) {
-        renderPartial('photo-template', 'quiz-stage');
-        setupPhotoCaptureStep(score, persona);
+    function renderPhotoStep(persona, alternates) {
+        renderPartial('photo-template', 'workshop-stage');
+        setupPhotoCaptureStep(persona, alternates);
     }
 
-    function transitionToResults(score, persona, imageOverride) {
+    function transitionToResults(persona, imageOverride, alternates) {
         renderLoading();
         setTimeout(() => {
-            renderResults(score, persona, imageOverride);
+            renderResults(persona, imageOverride, alternates);
         }, 3000);
     }
 
     function setState(nextState, payload = {}) {
-        if (nextState === 'welcome') {
-            renderWelcome();
-            return;
-        }
-
-        if (nextState === 'question') {
-            renderQuestion(payload.question || currentQuestion, payload.direction || 'forward');
+        if (nextState === 'workshop') {
+            renderWorkshop();
             return;
         }
 
@@ -619,40 +728,12 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
         }
 
         if (nextState === 'photo') {
-            renderPhotoStep(payload.score, payload.persona);
+            renderPhotoStep(payload.persona, payload.alternates);
             return;
         }
 
         if (nextState === 'results') {
-            renderResults(payload.score, payload.persona, payload.imageOverride);
-        }
-    }
-
-    function handleStageClick(event) {
-        const target = event.target;
-        if (!(target instanceof HTMLElement)) {
-            return;
-        }
-
-        if (target.id === 'start-quiz-btn') {
-            currentQuestion = 1;
-            setState('question', { question: currentQuestion, direction: 'forward' });
-            return;
-        }
-
-        if (target.classList.contains('prev-btn')) {
-            if (currentQuestion > 1) {
-                currentQuestion -= 1;
-                setState('question', { question: currentQuestion, direction: 'backward' });
-            }
-            return;
-        }
-
-        if (target.classList.contains('next-btn')) {
-            if (currentQuestion < totalQuestions) {
-                currentQuestion += 1;
-                setState('question', { question: currentQuestion, direction: 'forward' });
-            }
+            renderResults(payload.persona, payload.imageOverride, payload.alternates);
         }
     }
 
@@ -661,14 +742,17 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
         if (!(target instanceof HTMLInputElement)) {
             return;
         }
-        if (target.type !== 'radio') {
+        if (target.name !== 'workshop') {
             return;
         }
-        answers[currentQuestion] = parseInt(target.value);
-        updateNavState();
+        selectedWorkshopKey = target.value;
+        const submitBtn = workshopStage.querySelector('.submit-btn');
+        if (submitBtn) {
+            submitBtn.disabled = !selectedWorkshopKey;
+        }
     }
 
-    function setupPhotoCaptureStep(score, persona) {
+    function setupPhotoCaptureStep(persona, alternates) {
         const uploadInput = document.getElementById('photo-upload');
         const startCameraBtn = document.getElementById('start-camera');
         const skipPhotoBtn = document.getElementById('skip-photo');
@@ -719,7 +803,7 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
                 cameraPanel.style.display = 'block';
                 resetCaptureUi();
             } catch (err) {
-                console.error("Error accessing the camera, err");
+                logToServer({ event: 'camera_access_error', detail: err?.message || String(err) });
                 alert("Error accessing the camera: " + err.message);
             }
         });
@@ -766,11 +850,15 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
                 stopCamera();
                 renderLoading();
                 const result = await submitPhotoToFal(capturedBlob, persona);
-                renderResults(score, persona, result.image_url);
+                renderResults(persona, result.image_url, alternates);
             } catch (err) {
-                console.error("Error generating image", err);
-                alert("Error generating image: " + err.message);
-                setState('photo', { score, persona });
+                logToServer({
+                    event: "image_generation_error",
+                    err: err.message
+                })
+                // console.error("Error generating image", err);
+                // alert("Error generating image: " + err.message);
+                setState('photo', { persona, alternates });
             }
         });
 
@@ -789,61 +877,64 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
                 stopCamera();
                 renderLoading();
                 const result = await submitPhotoToFal(file, persona);
-                renderResults(score, persona, result.image_url);
+                renderResults(persona, result.image_url, alternates);
             } catch (err) {
-                console.error("Error generating image", err);
+                logToServer({ event: 'image_generation_error', detail: err?.message || String(err) });
                 alert("Error generating image: " + err.message);
-                setState('photo', { score, persona });
+                setState('photo', { persona, alternates });
             }
         });
 
         skipPhotoBtn.addEventListener('click', () => {
             logToServer({ event: 'photo_skipped' });
             stopCamera();
-            transitionToResults(score, persona);
+            const personaSet = getPersonaSet();
+            if (!personaSet) {
+                return;
+            }
+            transitionToResults(personaSet.persona, null, { left: personaSet.alt1, right: personaSet.alt2 });
         });
     }
 
     // Form submission
-    quizForm.addEventListener('submit', function (event) {
+    workshopForm.addEventListener('submit', function (event) {
         event.preventDefault();
-        let total = 0;
-
-        for (let i = 1; i <= totalQuestions; i++) {
-            let value = answers[i] ?? 0;
-
-            // Reverse score for questions marked as reverse
-            if (quizData[i] && quizData[i].reverse) {
-                value = 4 - value; // Convert 0->4, 1->3, 2->2, 3->1, 4->0
-            }
-            total += value;
-        }
-        const score = Math.round((total / (totalQuestions * 4)) * 100);
-        const persona = getPersonaFromScore(score);
-
-        // POST results to Xano endpoint
-        postQuizResults(answers, score, persona);
-
-        showResults(score, persona);
-    });
-
-    quizStage.addEventListener('click', handleStageClick);
-    quizStage.addEventListener('change', handleStageChange);
-
-    // Check for URL parameters to skip to results
-    const urlParams = new URLSearchParams(window.location.search);
-    const scoreParam = urlParams.get('score');
-
-    if (scoreParam !== null) {
-        const score = parseInt(scoreParam);
-        if (score >= 0 && score <= 100) {
-            const persona = getPersonaFromScore(score);
-            showResults(score, persona, true);
+        const workshop = getWorkshopByKey(selectedWorkshopKey);
+        if (!workshop) {
             return;
         }
-    }
+        const capacity = workshopCapacities.get(workshop.id);
+        if (typeof capacity === 'number' && capacity <= 0) {
+            return;
+        }
+        const personaSet = getPersonaSet();
+        if (!personaSet) {
+            return;
+        }
 
-    setState('welcome');
+        postWorkshopSelection(workshop);
+        showResults(personaSet.persona, { left: personaSet.alt1, right: personaSet.alt2 });
+    });
+
+    workshopStage.addEventListener('change', handleStageChange);
+
+    setState('workshop');
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    Promise.all([loadWorkshopCapacities(), lookupAttendee(token)])
+        .then(([, attendee]) => {
+            if (attendee) {
+                if (attendee.name) {
+                    attendeeName = attendee.name;
+                }
+                if (attendee.id) {
+                    attendeeId = attendee.id;
+                }
+            }
+        })
+        .finally(() => {
+            renderWorkshop();
+        });
 }
 
 function initApp() {

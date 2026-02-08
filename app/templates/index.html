@@ -1,62 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Measure your pharma AI mindset</title>
-  
+  <title>Register your Adventures in Pharma Workshop Attendance</title>
+
   <!-- Open Graph / LinkedIn Meta Tags -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Measure your pharma AI mindset">
-  <meta property="og:description" content="Discover your pharma AI mindset! Are you cautious, balanced, or progressive? Take our 2-minute quiz and get exclusive Adventures In Pharma discount.">
-  <meta property="og:image" content="https://mindset.adventuresinpharma.com/preview.jpg">
+  <meta property="og:title" content="AIP 2.0 Workshop Register">
+  <meta property="og:description"
+    content="Discover your pharma AI mindset! Are you cautious, balanced, or progressive? Take our 2-minute quiz and get exclusive Adventures In Pharma discount.">
+  <!-- <meta property="og:image" content="https://mindset.adventuresinpharma.com/preview.jpg"> -->
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:url" content="https://mindset.adventuresinpharma.com">
+  <meta property="og:url" content="https://quiz.adventuresinpharma.com">
   <meta property="og:site_name" content="Adventures In Pharma">
-  
+
   <!-- Twitter Meta Tags -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Measure your pharma AI mindset">
-  <meta name="twitter:description" content="Discover your pharma AI mindset! Are you cautious, balanced, or progressive? Take our 2-minute quiz and get exclusive Adventures In Pharma discount.">
   <meta name="twitter:image" content="https://mindset.adventuresinpharma.com/preview.jpg">
-  
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
+
 <body>
   <div class="logo">
-    <img src="https://cdn.prod.website-files.com/67ab2a95777a506d08092426/67ab312121d804a41517cf6e_AIP%20Logo-min.png" alt="AIP Logo">
+    <img src="https://cdn.prod.website-files.com/67ab2a95777a506d08092426/67ab312121d804a41517cf6e_AIP%20Logo-min.png"
+      alt="AIP Logo">
   </div>
 
-  <div class="container quiz-container">
-    <form id="quiz-form">
-      <div id="quiz-stage"></div>
+  <div class="container workshop-container">
+    <form id="workshop-form">
+      <div id="workshop-stage"></div>
 
-      <template id="welcome-template">
-        <div class="question-page active" id="welcome-page">
-          <div class="welcome-content">
-            <h1>Measure your AI mindset</h1>
-            <p class="welcome-intro">You don't need to code. You don't need to prompt like a pro.</p>
-            <p class="welcome-intro">But if you're curious about AI in pharma, we've built this for you.</p>
-            <p class="welcome-intro">Is your AI mindset bold, balanced, or too cautious?</p>
-            
-            <div class="welcome-highlight">
-              <p class="welcome-arrow">👉 Take 2 minutes to discover your pharma AI mindset.</p>
+      <template id="workshop-template">
+        <div class="question-page active" id="workshop-page">
+          <div class="question">
+            <h1 id="workshop-greeting">Welcome</h1>
+            <h2>Please select the workshop you'd like to attend</h2>
+            <div id="workshop-options" class="workshop-options"></div>
+          </div>
+          <div class="navigation">
+            <div></div>
+            <div>
+              <button type="submit" class="submit-btn" disabled>Continue</button>
             </div>
-            
-            <div class="welcome-benefits">
-              <p>You'll get:</p>
-              <ul>
-                <li>Your pharma AI mindset profile</li>
-                <li>A discount code for Adventures In Pharma conference</li>
-                <li>A social-ready image to share your result (and show off a little)</li>
-              </ul>
-            </div>
-            
-            <p class="welcome-tagline">It's fast. It's fun. It's (mostly) scientifically sound.</p>
-            
-            <button type="button" id="start-quiz-btn" class="start-button">Start Quiz</button>
           </div>
         </div>
       </template>
@@ -64,8 +55,8 @@
       <template id="photo-template">
         <div class="question-page active" id="photo-page">
           <div class="question">
-            <h2>Add your photo to unlock your result</h2>
-            <p class="welcome-intro">Upload a photo, take one with your webcam, or skip to keep the character image.</p>
+            <h2>Get Ready to Join the Adventures Crew! </h2>
+            <p class="welcome-intro">Take a moment to upload a photo, or take one via your webcam.</p>
             <div class="photo-actions">
               <label class="upload-photo-btn">
                 Upload photo
@@ -88,42 +79,12 @@
         </div>
       </template>
 
-      <template id="question-template">
-        <div class="question-page active">
-          <div class="question">
-            <h2></h2>
-            <div class="question-content">
-              <div class="likert-scale">
-                <label><input type="radio" value="0"> Not at all</label>
-                <label><input type="radio" value="1"> Slightly</label>
-                <label><input type="radio" value="2"> Moderately</label>
-                <label><input type="radio" value="3"> Very much</label>
-                <label><input type="radio" value="4"> Completely</label>
-              </div>
-              <p class="explainer"></p>
-            </div>
-          </div>
-          <div class="navigation">
-            <div class="progress">
-              <span class="progress-text"></span>
-              <div class="progress-bar-container">
-                <div class="progress-bar"></div>
-              </div>
-            </div>
-            <div>
-              <button type="button" class="prev-btn secondary">&lt; Back</button>
-              <button type="button" class="next-btn" disabled>Next &gt;</button>
-              <button type="submit" class="submit-btn" disabled>Get my AI Mindset Profile</button>
-            </div>
-          </div>
-        </div>
-      </template>
 
       <template id="loading-template">
         <div class="question-page results-celebration active" id="loading-page">
           <div class="question">
             <div class="loading-screen active">
-              <div class="loading-text">Analyzing your pharma AI mindset...</div>
+              <div class="loading-text">Registering attendance and adding you to the team...</div>
               <div class="cogs-container">
                 <div class="cog"></div>
                 <div class="cog"></div>
@@ -138,77 +99,26 @@
         <div class="question-page results-celebration active" id="results-page">
           <div class="question">
             <div class="results-layout">
-            <div class="persona-image-container">
-              <img id="persona-image" src="" alt="" class="persona-image">
-            </div>
-              
+              <div class="persona-image-container">
+                <img id="persona-image" src="" alt="" class="persona-image">
+              </div>
+
               <div class="persona-content">
-                <h2 id="persona-title">You're [Persona Name]!</h2>
-                
-                <p class="persona-explanation" id="persona-explanation">
-                  Your responses show...
-                </p>
-
-                <div class="ai-spectrum">
-                  <div class="spectrum-title">Pharma AI mindset spectrum</div>
-                  <div class="spectrum-container">
-                    <div class="spectrum-indicator" id="spectrum-indicator">YOU</div>
-                  </div>
-                  <div class="spectrum-labels">
-                    <span>Cautious</span>
-                    <span>Balanced</span>
-                    <span>Progressive</span>
-                  </div>
-                </div>
-            </div>
-          </div>
-
-            <div class="share-box">
-              <h3>Share your mindset</h3>
-              <div class="share-content">
-                <div class="share-preview">
-                  <img id="share-preview-image" src="" alt="Share preview" class="share-preview-img">
-                </div>
-                <div class="share-text">
-                  <textarea id="share-textarea" readonly></textarea>
-                </div>
-              </div>
-              <div class="share-steps">
-                <div class="share-step">
-                  <span class="step-number">1.</span>
-                  <button type="button" class="download-image-btn" id="download-image">Download image to share</button>
-                </div>
-                <div class="share-step">
-                  <span class="step-number">2.</span>
-                  <button type="button" class="copy-text-btn" id="copy-text">Copy text for your post</button>
-                </div>
-                <div class="share-step">
-                  <span class="step-number">3.</span>
-                  <button type="button" class="share-linkedin" id="share-linkedin">Post to LinkedIn!</button>
-                </div>
+                <h2 id="results-greeting">Welcome!</h2>
+                <p class="persona-explanation" id="results-confirmation">You're confirmed for your workshop.</p>
+                <p class="persona-explanation" id="results-details">We're looking forward to seeing you.</p>
               </div>
             </div>
 
-            <div class="conference-promo">
-
-           <h3>Ready to level up your AI adventure?</h3>
-
-              <div class="discount-section">
-                <p class="discount-label">Your exclusive discount code:</p>
-                <div class="discount-code" id="discount-code">[PERSONACODE]</div>
-                <p class="discount-amount">Save £200 on your ticket!</p>
+            <div class="composite-section">
+              <h3>Your Adventure Crew</h3>
+              <div class="composite-image-wrap">
+                <img id="composite-image" src="" alt="Adventure crew composite" class="persona-image">
               </div>
-              
-              <p>Join 80+ pharma professionals exploring AI's real-world impact at Adventures In Pharma.</p>
-              <p class="event-details">📅 1st July 2025 | 📍 The Brewery, London</p>
-              
-              <a href="https://eur.cvent.me/wzo5xa" target="_blank" class="cta-button">
-                Claim Your Spot at Adventures In Pharma
-              </a>
+              <button type="button" class="download-image-btn" id="download-composite" disabled>Download crew image</button>
             </div>
 
-            
-            <button type="button" id="restart-btn" onclick="location.reload()">Take Quiz Again</button>
+            <button type="button" id="restart-btn" onclick="location.reload()">Change my workshop</button>
           </div>
         </div>
       </template>
@@ -217,9 +127,11 @@
   </div>
 
   <footer class="global-footer">
-    <p>Learn more about <a href="https://www.adventuresinpharma.com" target="_blank">Adventures In Pharma</a> conference</p>
+    <p>Learn more about <a href="https://www.adventuresinpharma.com" target="_blank">Adventures In Pharma</a> conference
+    </p>
   </footer>
 
   <script src="/static/app.js"></script>
 </body>
+
 </html>

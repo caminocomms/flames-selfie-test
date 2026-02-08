@@ -25,7 +25,11 @@ h1 {
   margin-bottom: 1rem;
 }
 
-.quiz-container {
+#workshop-greeting {
+  color: var(--aip-navy-blue);
+}
+
+.workshop-container {
   background-color: var(--aip-white);
   color: var(--aip-navy-blue);
   padding: 0;
@@ -120,6 +124,129 @@ h1 {
   text-align: left;
   line-height: 1.4;
   min-height: 4rem;
+}
+
+.question h2.centered-title {
+  text-align: center;
+}
+
+.question-page#photo-page .question h2 {
+  text-align: center;
+}
+
+#photo-page .question {
+  max-width: 560px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+#photo-page .welcome-intro {
+  margin: 0 0 1.5rem;
+  color: var(--aip-navy-blue);
+  font-size: 1rem;
+}
+
+#photo-page .photo-actions {
+  display: grid;
+  gap: 0.85rem;
+  margin: 1.5rem 0 1rem;
+}
+
+#photo-page .upload-photo-btn,
+#photo-page .take-photo-btn,
+#photo-page .skip-photo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.9rem 1.1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+#photo-page .upload-photo-btn {
+  background: var(--aip-mustard);
+  color: var(--aip-navy-blue);
+  box-shadow: 0 10px 20px rgba(253, 195, 94, 0.25);
+}
+
+#photo-page .take-photo-btn {
+  background: var(--aip-burnt-orange);
+  color: var(--aip-white);
+  box-shadow: 0 10px 20px rgba(204, 99, 62, 0.25);
+}
+
+#photo-page .skip-photo-btn {
+  background: transparent;
+  color: var(--aip-navy-blue);
+  border-color: rgba(45, 54, 72, 0.35);
+}
+
+#photo-page .upload-photo-btn:hover,
+#photo-page .take-photo-btn:hover,
+#photo-page .skip-photo-btn:hover {
+  transform: translateY(-1px);
+}
+
+#photo-page .upload-photo-btn:hover {
+  box-shadow: 0 14px 26px rgba(253, 195, 94, 0.35);
+}
+
+#photo-page .take-photo-btn:hover {
+  box-shadow: 0 14px 26px rgba(204, 99, 62, 0.35);
+}
+
+#photo-page .skip-photo-btn:hover {
+  background: rgba(45, 54, 72, 0.05);
+}
+
+@media (min-width: 640px) {
+  #photo-page .photo-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  #photo-page .skip-photo-btn {
+    grid-column: 1 / -1;
+  }
+}
+
+#workshop-options {
+  display: grid;
+  gap: 1rem;
+}
+
+.workshop-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(45, 54, 72, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.workshop-option input {
+  margin-right: 0.75rem;
+}
+
+.workshop-option span {
+  flex: 1;
+}
+
+.workshop-capacity {
+  flex: 0 0 auto;
+  font-weight: 600;
+  color: var(--aip-burnt-orange);
+}
+
+.workshop-option.is-full {
+  opacity: 0.5;
+  background: rgba(45, 54, 72, 0.05);
+  cursor: not-allowed;
 }
 
 #persona-title {
@@ -355,7 +482,7 @@ button.secondary:hover:not(:disabled) {
     max-width: 300px;
   }
 
-  .quiz-container {
+  .workshop-container {
     margin: 0;
     min-height: auto;
     overflow: visible;
@@ -545,7 +672,7 @@ button.secondary:hover:not(:disabled) {
     max-width: 250px;
   }
 
-  .quiz-container {
+  .workshop-container {
     margin: 0;
     min-height: auto;
     overflow: visible;

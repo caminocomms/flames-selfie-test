@@ -29,3 +29,19 @@ class FalAPIClient:
         )
 
         return result["images"][0]["url"]
+
+# import { fal } from "@fal-ai/client";
+
+# const result = await fal.subscribe("fal-ai/imageutils/rembg", {
+#   input: {
+#     image_url: "https://storage.googleapis.com/falserverless/model_tests/remove_background/elephant.jpg"
+#   },
+#   logs: true,
+#   onQueueUpdate: (update) => {
+#     if (update.status === "IN_PROGRESS") {
+#       update.logs.map((log) => log.message).forEach(console.log);
+#     }
+#   },
+# });
+# console.log(result.data);
+# console.log(result.requestId);

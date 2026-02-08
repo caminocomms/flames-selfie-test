@@ -2,3 +2,6 @@
 .env
 **/__pycache__/
 .vscode
+.python-version
+.python-version
+test/
