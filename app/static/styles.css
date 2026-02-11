@@ -580,18 +580,18 @@ button.secondary:hover:not(:disabled) {
     gap: 1.5rem;
   }
 
-  .persona-image-container {
+  .workshop-image-container {
     max-width: 100%;
     text-align: center;
   }
 
-  .persona-image {
-    width: 100%;
-    max-width: 250px;
+  .composite-image {
+    width: 90%;
+    max-width: 320px;
     height: auto;
   }
 
-  .persona-content h2 {
+  .selected-workshop-content h2 {
     text-align: center;
   }
 
@@ -709,9 +709,9 @@ button.secondary:hover:not(:disabled) {
     font-size: 1.3rem;
   }
 
-  .persona-image {
-    width: 100%;
-    max-width: 200px;
+  .composite-image {
+    width: 90%;
+    max-width: 260px;
     height: auto;
   }
 
@@ -946,32 +946,48 @@ button.secondary:hover:not(:disabled) {
   margin: 1rem 0;
 }
 
-.persona-image-container {
-  flex: 0 0 auto;
-  max-width: 300px;
+.workshop-image-container {
+  flex: 0 0 50%;
+  max-width: 50%;
 }
 
-.persona-image {
+.composite-image {
   width: 100%;
   height: auto;
   border-radius: 0;
   object-fit: contain;
   background-color: transparent;
   display: block;
+  max-width: 520px;
 }
 
-.persona-content {
+.persona-image--static {
+  width: 80%;
+  height: auto;
+  border-radius: 0;
+  object-fit: contain;
+  background-color: transparent;
+  display: block;
+  max-width: 520px;
+}
+
+.persona-image--generated {
+  width: 80%;
+}
+/* This one is fine */
+
+.selected-workshop-content {
   flex: 1;
   min-width: 0;
 }
 
-.persona-content h2 {
+.selected-workshop-content h2 {
   text-align: left;
   margin-top: 0;
 }
 
 
-.persona-explanation {
+.workshop-confirmation {
   margin: 1.5rem 0;
   color: var(--aip-navy-blue);
   font-size: 1rem;
@@ -1415,4 +1431,31 @@ button.secondary:hover:not(:disabled) {
 .global-footer a:hover {
   color: var(--aip-white);
   text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .workshop-image-container {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .composite-image {
+    max-width: 320px;
+  }
+
+  .persona-image--generated {
+    width: 70%;
+    max-width: 260px;
+  }
+}
+
+@media (max-width: 480px) {
+  .composite-image {
+    max-width: 260px;
+  }
+
+  .persona-image--generated {
+    width: 75%;
+    max-width: 220px;
+  }
 }

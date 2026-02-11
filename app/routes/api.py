@@ -36,7 +36,7 @@ async def generate_image(
 
     try:
         client = FalAPIClient()
-        image_url = client.generate_image(temp_path, Path(ref_path), prompt=prompt)
+        image_url = client.generate_image_with_background_removed(temp_path, Path(ref_path), prompt=prompt)
     finally:
         temp_path.unlink(missing_ok=True)
 

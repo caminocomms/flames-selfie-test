@@ -8,6 +8,7 @@ load_dotenv()
 OUTPUT_FORMAT = "png"
 NUM_IMAGES = 1
 FAL_MODEL = "fal-ai/nano-banana/edit"
+BRIA_BG_REMOVE_MODEL = "fal-ai/bria/background/remove"
 PROMPT = "Turn the guest into a comic stylised version of the supplied reference character"
 
 
@@ -30,18 +31,22 @@ class FalAPIClient:
 
         return result["images"][0]["url"]
 
-# import { fal } from "@fal-ai/client";
+    def remove_background(self, image_url: str) -> str:
+        result = fal_client.subscribe(
+            BRIA_BG_REMOVE_MODEL,
+            arguments={
+                "image_url": image_url,
+            },
+            with_logs=True,
+            on_queue_update=lambda status: print(f"Status: {status}")
+        )
 
-# const result = await fal.subscribe("fal-ai/imageutils/rembg", {
-#   input: {
-#     image_url: "https://storage.googleapis.com/falserverless/model_tests/remove_background/elephant.jpg"
-#   },
-#   logs: true,
-#   onQueueUpdate: (update) => {
-#     if (update.status === "IN_PROGRESS") {
-#       update.logs.map((log) => log.message).forEach(console.log);
-#     }
-#   },
-# });
-# console.log(result.data);
-# console.log(result.requestId);
+        print(result)
+
+        return result["image"]["url"]
+
+    def generate_image_with_background_removed(
+        self, base_image: Path, ref_char_path: Path, prompt: str | None = None
+    ) -> str:
+        image_url = self.generate_image(base_image, ref_char_path, prompt=prompt)
+        return self.remove_background(image_url)

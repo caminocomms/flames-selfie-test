@@ -1,11 +1,8 @@
-const XANO_BASE_URL = "https://xzqt-mxe3-bdgf.p7.xano.io/api:lLmtpgpS";
-const QUIZ_RESULT_URL = `${XANO_BASE_URL}/quiz_result`;
-const WORKSHOP_API_URL = "https://xzqt-mxe3-bdgf.p7.xano.io/api:QpHvEgrd/get_workshops";
+const WORKSHOP_API_URL = "https://xzqt-mxe3-bdgf.p7.xano.io/api:QpHvEgrd/workshop";
 const RSVP_LOOKUP_URL = "https://xzqt-mxe3-bdgf.p7.xano.io/api:QpHvEgrd/rspv/lookup";
 const CHARACTERS_DIR = "/static/characters-2.0"
 const SHARE_DIR = "/static/sharegraphics"
 const LINKEDIN_URL = "https://www.linkedin.com/feed/?shareActive=true&text=I%20just%20discovered%20my%20pharma%20AI%20mindset%E2%80%A6"
-
 
 const PROMPT = `Transform the person from the webcam or uploaded photo into a fully illustrated comic-book character based on the supplied reference character.
 
@@ -110,18 +107,11 @@ function initQuiz() {
         return; ƒ
     }
 
-    const workshops = [
-        { id: 1, key: 'advanced-prompting', label: 'Advanced prompting for data mining' },
-        { id: 2, key: 'super-slides', label: 'Building super slides for MSLs and KAMs' },
-        { id: 3, key: 'vibecoding', label: 'Vibecoding in action' },
-        { id: 4, key: 'ai-tools', label: 'AI tools built for pharma teams' },
-        { id: 5, key: 'rare-disease', label: 'Smarter strategies for rare disease engagement' }
-    ];
-
-    let selectedWorkshopKey = null;
-    const workshopCapacities = new Map();
+    let workshops = [];
+    let selectedWorkshopId = null;
     let attendeeName = null;
     let attendeeId = null;
+    const trimmedImageCache = new Map();
 
     // Confetti generation
     function createConfetti() {
@@ -226,15 +216,6 @@ function initQuiz() {
         }
     };
 
-    function getRandomPersona() {
-        const options = Object.values(personas);
-        if (options.length === 0) {
-            return null;
-        }
-        const index = Math.floor(Math.random() * options.length);
-        return options[index];
-    }
-
     function getRandomPersonas(count = 1) {
         const pool = Object.values(personas);
         if (pool.length < count) {
@@ -278,6 +259,103 @@ function initQuiz() {
                 return response.json();
             })
             .then((data) => data?.image_data || null);
+    }
+
+    async function trimImageToAlpha(imageUrl) {
+        if (!imageUrl) {
+            return imageUrl;
+        }
+
+        if (trimmedImageCache.has(imageUrl)) {
+            return trimmedImageCache.get(imageUrl);
+        }
+
+        const trimmedPromise = new Promise((resolve) => {
+            const image = new Image();
+
+            image.onload = () => {
+                try {
+                    const width = image.naturalWidth;
+                    const height = image.naturalHeight;
+                    if (!width || !height) {
+                        resolve(imageUrl);
+                        return;
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const context = canvas.getContext('2d');
+                    if (!context) {
+                        resolve(imageUrl);
+                        return;
+                    }
+
+                    context.drawImage(image, 0, 0);
+                    const { data } = context.getImageData(0, 0, width, height);
+
+                    let minX = width;
+                    let minY = height;
+                    let maxX = -1;
+                    let maxY = -1;
+
+                    for (let y = 0; y < height; y += 1) {
+                        for (let x = 0; x < width; x += 1) {
+                            const alpha = data[(y * width + x) * 4 + 3];
+                            if (alpha !== 0) {
+                                if (x < minX) minX = x;
+                                if (x > maxX) maxX = x;
+                                if (y < minY) minY = y;
+                                if (y > maxY) maxY = y;
+                            }
+                        }
+                    }
+
+                    if (maxX < minX || maxY < minY) {
+                        resolve(imageUrl);
+                        return;
+                    }
+
+                    if (minX === 0 && minY === 0 && maxX === width - 1 && maxY === height - 1) {
+                        resolve(imageUrl);
+                        return;
+                    }
+
+                    const croppedWidth = maxX - minX + 1;
+                    const croppedHeight = maxY - minY + 1;
+                    const croppedCanvas = document.createElement('canvas');
+                    croppedCanvas.width = croppedWidth;
+                    croppedCanvas.height = croppedHeight;
+                    const croppedContext = croppedCanvas.getContext('2d');
+                    if (!croppedContext) {
+                        resolve(imageUrl);
+                        return;
+                    }
+
+                    croppedContext.drawImage(
+                        canvas,
+                        minX,
+                        minY,
+                        croppedWidth,
+                        croppedHeight,
+                        0,
+                        0,
+                        croppedWidth,
+                        croppedHeight
+                    );
+                    resolve(croppedCanvas.toDataURL('image/png'));
+                } catch (error) {
+                    logToServer({ event: 'alpha_trim_failed', detail: error?.message || String(error) });
+                    resolve(imageUrl);
+                }
+            };
+
+            image.onerror = () => resolve(imageUrl);
+            image.src = imageUrl;
+        });
+
+        trimmedImageCache.set(imageUrl, trimmedPromise);
+        return trimmedPromise;
     }
 
     function wireCompositeDownload(button, dataUrl) {
@@ -482,7 +560,7 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
         }
     }
 
-    async function loadWorkshopCapacities() {
+    async function loadWorkshops() {
         try {
             const response = await fetch(WORKSHOP_API_URL, {
                 method: 'GET'
@@ -499,26 +577,28 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
             if (!Array.isArray(data)) {
                 return;
             }
-            data.forEach((item) => {
-                if (!item) {
-                    return;
-                }
-                const rawId = item.workshop_id ?? item.id;
-                const workshopId = typeof rawId === 'number' ? rawId : parseInt(rawId, 10);
-                if (!Number.isFinite(workshopId)) {
-                    return;
-                }
-                const rawSpots = item.spots_left ?? item.capacity;
-                const spotsLeft = typeof rawSpots === 'number' ? rawSpots : parseInt(rawSpots, 10);
-                if (Number.isFinite(spotsLeft)) {
-                    workshopCapacities.set(workshopId, spotsLeft);
-                }
-            });
+            workshops = data
+                .filter((item) => item && (item.id !== undefined || item.workshop_id !== undefined))
+                .map((item) => {
+                    const rawId = item.id ?? item.workshop_id;
+                    const workshopId = typeof rawId === 'number' ? rawId : parseInt(rawId, 10);
+                    if (!Number.isFinite(workshopId)) {
+                        return null;
+                    }
+                    return {
+                        id: workshopId,
+                        title: item.title || item.label || 'Workshop',
+                        description: item.description || '',
+                        order: item.order
+                    };
+                }).sort((a, b) => a.order - b.order)
+                .filter(Boolean)
+            
         } catch (error) {
             logToServer({
                 event: "get_workshops_failed",
-                err: err.message
-            })
+                err: error?.message || String(error)
+            });
         }
     }
 
@@ -549,8 +629,8 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
         }
     }
 
-    function getWorkshopByKey(key) {
-        return workshops.find((workshop) => workshop.key === key);
+    function getWorkshopById(id) {
+        return workshops.find((workshop) => workshop.id === id);
     }
 
     function renderWorkshop() {
@@ -572,36 +652,28 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
                 const input = document.createElement('input');
                 input.type = 'radio';
                 input.name = 'workshop';
-                input.value = workshop.key;
+                input.value = String(workshop.id);
                 input.id = optionId;
-                input.checked = selectedWorkshopKey === workshop.key;
-                const capacity = workshopCapacities.get(workshop.id);
-                const isFull = typeof capacity === 'number' && capacity <= 0;
-                input.disabled = isFull;
-                if (isFull) {
-                    label.classList.add('is-full');
-                }
+                input.checked = selectedWorkshopId === workshop.id;
 
                 const text = document.createElement('span');
-                text.textContent = workshop.label;
-
-                const capacityText = document.createElement('span');
-                capacityText.className = 'workshop-capacity';
-                if (typeof capacity === 'number') {
-                    capacityText.textContent = `${capacity} spots left`;
-                } else {
-                    capacityText.textContent = 'Capacity unavailable';
-                }
+                text.textContent = workshop.title;
 
                 label.appendChild(input);
                 label.appendChild(text);
-                label.appendChild(capacityText);
+
+                if (workshop.description) {
+                    const description = document.createElement('span');
+                    description.className = 'workshop-description';
+                    description.textContent = workshop.description;
+                    label.appendChild(description);
+                }
                 optionsContainer.appendChild(label);
             });
         }
 
         if (submitBtn) {
-            submitBtn.disabled = !selectedWorkshopKey;
+            submitBtn.disabled = !selectedWorkshopId;
         }
     }
 
@@ -612,12 +684,6 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
     function renderResults(persona, imageOverride, alternates = {}) {
         renderPartial('results-template', 'workshop-stage');
 
-        // console.log('[AIP Quiz] Results', {
-        //     persona: persona?.name,
-        //     mindset: persona?.mindsetType,
-        //     prompt: PROMPT,
-        //     imageOverride: Boolean(imageOverride)
-        // });
         logToServer({
             event: 'render_persona_result',
             persona: persona?.name,
@@ -629,8 +695,27 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
         // Update persona image
         const personaImage = document.getElementById('persona-image');
         if (personaImage) {
-            personaImage.src = imageOverride || persona.image;
+            const sourceImage = imageOverride || persona.image;
+            personaImage.src = sourceImage;
             personaImage.alt = `${persona.name} - AI Adventure Profile`;
+            personaImage.classList.toggle('persona-image--generated', Boolean(imageOverride));
+            personaImage.dataset.sourceImage = sourceImage;
+
+            if (!imageOverride) {
+                trimImageToAlpha(sourceImage).then((trimmedSource) => {
+                    const currentPersonaImage = document.getElementById('persona-image');
+                    if (!currentPersonaImage) {
+                        return;
+                    }
+                    if (currentPersonaImage.dataset.sourceImage !== sourceImage) {
+                        return;
+                    }
+                    if (currentPersonaImage.classList.contains('persona-image--generated')) {
+                        return;
+                    }
+                    currentPersonaImage.src = trimmedSource;
+                });
+            }
         }
 
         const greeting = document.getElementById('results-greeting');
@@ -640,9 +725,9 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
 
         const confirmation = document.getElementById('results-confirmation');
         if (confirmation) {
-            const workshop = getWorkshopByKey(selectedWorkshopKey);
+            const workshop = getWorkshopById(selectedWorkshopId);
             confirmation.textContent = workshop
-                ? `You're confirmed for ${workshop.label}.`
+                ? `You're confirmed for ${workshop.title}.`
                 : "You're confirmed for your workshop.";
         }
 
@@ -691,10 +776,6 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
             return;
         }
 
-        // console.log('[AIP Quiz] Preparing results', {
-        //     persona: persona?.name,
-        //     prompt: PROMPT
-        // });
         logToServer({
             event: 'prepare_persona_prompt',
             persona: persona?.name,
@@ -745,10 +826,11 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
         if (target.name !== 'workshop') {
             return;
         }
-        selectedWorkshopKey = target.value;
+        const nextId = parseInt(target.value, 10);
+        selectedWorkshopId = Number.isFinite(nextId) ? nextId : null;
         const submitBtn = workshopStage.querySelector('.submit-btn');
         if (submitBtn) {
-            submitBtn.disabled = !selectedWorkshopKey;
+            submitBtn.disabled = !selectedWorkshopId;
         }
     }
 
@@ -856,8 +938,6 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
                     event: "image_generation_error",
                     err: err.message
                 })
-                // console.error("Error generating image", err);
-                // alert("Error generating image: " + err.message);
                 setState('photo', { persona, alternates });
             }
         });
@@ -899,12 +979,8 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
     // Form submission
     workshopForm.addEventListener('submit', function (event) {
         event.preventDefault();
-        const workshop = getWorkshopByKey(selectedWorkshopKey);
+        const workshop = getWorkshopById(selectedWorkshopId);
         if (!workshop) {
-            return;
-        }
-        const capacity = workshopCapacities.get(workshop.id);
-        if (typeof capacity === 'number' && capacity <= 0) {
             return;
         }
         const personaSet = getPersonaSet();
@@ -921,7 +997,7 @@ Discover your pharma AI mindset and get an exclusive discount for Adventures In 
     setState('workshop');
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    Promise.all([loadWorkshopCapacities(), lookupAttendee(token)])
+    Promise.all([loadWorkshops(), lookupAttendee(token)])
         .then(([, attendee]) => {
             if (attendee) {
                 if (attendee.name) {
