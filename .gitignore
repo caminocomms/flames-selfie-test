@@ -5,3 +5,6 @@
 .python-version
 .python-version
 test/
+/.venv
+.python-version
+/source_images

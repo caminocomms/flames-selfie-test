@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FLAMES Selfie | Encephalitis International</title>
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="FLAMES Selfie">
+  <meta property="og:description" content="Download and share this FLAMES campaign selfie.">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body data-page="share" data-result-id="{{ result_id }}">
+  <div class="backdrop one"></div>
+  <div class="backdrop two"></div>
+  <div class="backdrop three"></div>
+
+  <main class="shell share-shell">
+    <header class="hero">
+      <div class="brand-row">
+        <img class="ei-logo" src="/static/campaign/ei-logo.png" alt="Encephalitis International">
+      </div>
+      <img class="flames-logo" src="/static/campaign/flames-logo.png" alt="FLAMES">
+      <p class="kicker">Shared from the FLAMES campaign</p>
+      <h1>Your FLAMES selfie</h1>
+      <p class="hero-copy">Save this image and post it to support awareness.</p>
+    </header>
+
+    <section class="result" id="share-result-panel">
+      <img id="result-image" alt="Shared FLAMES selfie">
+      <div class="action-row">
+        <a id="download-btn" class="cta" href="#" target="_blank" rel="noopener">Download It</a>
+      </div>
+      <div class="action-row">
+        <a class="pill" href="/">Make Your Own FLAMES Selfie</a>
+      </div>
+      <p id="error-text" class="error"></p>
+    </section>
+
+    <footer class="page-footer">
+      <p>Find out more about FLAMES at <a href="https://www.encephalitis.info" target="_blank" rel="noopener">encephalitis.info</a>.</p>
+    </footer>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

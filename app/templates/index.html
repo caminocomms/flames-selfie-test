@@ -1,137 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Register your Adventures in Pharma Workshop Attendance</title>
-
-  <!-- Open Graph / LinkedIn Meta Tags -->
+  <title>FLAMES Selfie Generator | Encephalitis International</title>
   <meta property="og:type" content="website">
-  <meta property="og:title" content="AIP 2.0 Workshop Register">
-  <meta property="og:description"
-    content="Discover your pharma AI mindset! Are you cautious, balanced, or progressive? Take our 2-minute quiz and get exclusive Adventures In Pharma discount.">
-  <!-- <meta property="og:image" content="https://mindset.adventuresinpharma.com/preview.jpg"> -->
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:url" content="https://quiz.adventuresinpharma.com">
-  <meta property="og:site_name" content="Adventures In Pharma">
-
-  <!-- Twitter Meta Tags -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Measure your pharma AI mindset">
-  <meta name="twitter:image" content="https://mindset.adventuresinpharma.com/preview.jpg">
-
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <meta property="og:title" content="Make Your FLAMES Selfie">
+  <meta property="og:description" content="Turn your photo into a classic 1970s firefighter portrait in FLAMES campaign colors.">
+  <meta property="og:image" content="/static/campaign/flames-logo.png">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
+<body data-page="generate">
+  <div class="backdrop one"></div>
+  <div class="backdrop two"></div>
+  <div class="backdrop three"></div>
 
-<body>
-  <div class="logo">
-    <img src="https://cdn.prod.website-files.com/67ab2a95777a506d08092426/67ab312121d804a41517cf6e_AIP%20Logo-min.png"
-      alt="AIP Logo">
-  </div>
+  <main class="shell">
+    <header class="hero">
+      <div class="brand-row">
+        <img class="ei-logo" src="/static/campaign/ei-logo.png" alt="Encephalitis International">
+      </div>
+      <img class="flames-logo" src="/static/campaign/flames-logo.png" alt="FLAMES">
+      <p class="kicker">One photo. One click. One powerful share.</p>
+      <h1>Make your FLAMES selfie</h1>
+      <p class="hero-copy">Upload a photo or use your camera and we will transform it into a nostalgic 1970s firefighter portrait in FLAMES campaign colours, finished with the campaign frame.</p>
+      <ul class="promise-list" aria-label="What you will get">
+        <li>Square image ready for social posts</li>
+        <li>Unique share link for friends and supporters</li>
+        <li>Instant download for your channels</li>
+      </ul>
+    </header>
 
-  <div class="container workshop-container">
-    <form id="workshop-form">
-      <div id="workshop-stage"></div>
+    <section class="story-strip" id="how-it-works" aria-label="How it works">
+      <article>
+        <h2>1. Add your photo</h2>
+        <p>Use a clear selfie in good light for the strongest result.</p>
+      </article>
+      <article>
+        <h2>2. We style it</h2>
+        <p>AI applies the FLAMES visual treatment and classic firefighter look.</p>
+      </article>
+      <article>
+        <h2>3. Share it</h2>
+        <p>Download and post your image, or send your unique link.</p>
+      </article>
+    </section>
 
-      <template id="workshop-template">
-        <div class="question-page active" id="workshop-page">
-          <div class="question">
-            <h1 id="workshop-greeting">Welcome</h1>
-            <h2>Please select the workshop you'd like to attend</h2>
-            <div id="workshop-options" class="workshop-options"></div>
-          </div>
-          <div class="navigation">
-            <div></div>
-            <div>
-              <button type="submit" class="submit-btn" disabled>Continue</button>
-            </div>
+    <section class="studio" id="studio-panel">
+      <div id="create-content">
+        <h2 class="section-title">Create your image</h2>
+        <p class="section-copy">Choose upload or camera. Your original image is processed to create your campaign result.</p>
+
+        <div class="picker-row">
+          <label class="pill control-pill">
+            <input type="file" id="photo-upload" accept="image/jpeg,image/png,image/webp" hidden>
+            Upload Photo
+          </label>
+          <button class="pill" id="start-camera" type="button">Use Camera</button>
+        </div>
+
+        <div id="camera-panel" class="camera-panel hidden">
+          <video id="camera-video" autoplay playsinline></video>
+          <canvas id="capture-canvas" class="hidden"></canvas>
+          <div class="picker-row compact">
+            <button class="pill" id="capture-btn" type="button">Capture</button>
+            <button class="pill secondary" id="retake-btn" type="button">Retake</button>
           </div>
         </div>
-      </template>
 
-      <template id="photo-template">
-        <div class="question-page active" id="photo-page">
-          <div class="question">
-            <h2>Get Ready to Join the Adventures Crew! </h2>
-            <p class="welcome-intro">Take a moment to upload a photo, or take one via your webcam.</p>
-            <div class="photo-actions">
-              <label class="upload-photo-btn">
-                Upload photo
-                <input type="file" id="photo-upload" accept="image/*" hidden>
-              </label>
-              <button type="button" class="take-photo-btn" id="start-camera">Take photo</button>
-              <button type="button" class="skip-photo-btn secondary" id="skip-photo">Skip photo</button>
-            </div>
-            <div class="camera" id="camera-panel">
-              <video id="video" autoplay playsinline></video>
-              <canvas id="canvas" style="display:none;"></canvas>
-              <img id="capture-preview" alt="Photo preview" style="display:none;" />
-              <div class="camera-actions">
-                <button type="button" id="captureButton">Capture</button>
-                <button type="button" id="retakeButton" class="secondary" style="display:none;">Retake</button>
-                <button type="button" id="usePhotoButton" style="display:none;">Use photo</button>
-              </div>
-            </div>
-          </div>
+        <div class="preview-wrap">
+          <img id="photo-preview" alt="Selected photo preview">
         </div>
-      </template>
 
-
-      <template id="loading-template">
-        <div class="question-page results-celebration active" id="loading-page">
-          <div class="question">
-            <div class="loading-screen active">
-              <div class="loading-text">Registering attendance and adding you to the team...</div>
-              <div class="cogs-container">
-                <div class="cog"></div>
-                <div class="cog"></div>
-                <div class="cog"></div>
-              </div>
-            </div>
-          </div>
+        <div class="action-row">
+          <button class="cta" id="generate-btn" type="button" disabled>Generate My FLAMES Selfie</button>
         </div>
-      </template>
+      </div>
 
-      <template id="results-template">
-        <div class="question-page results-celebration active" id="results-page">
-          <div class="question">
-            <div class="results-layout">
-              <div class="workshop-image-container">
-                <img id="persona-image" src="" alt="" class="persona-image--static">
-              </div>
+      <div id="progress-panel" class="progress-panel hidden" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <h3>Creating your FLAMES selfie</h3>
+        <p>This usually takes around 30 seconds.</p>
+      </div>
 
-              <div class="selected-workshop-content">
-                <h2 id="results-greeting">Welcome!</h2>
-                <p class="workshop-confirmation" id="results-confirmation">You're confirmed for your workshop.</p>
-                <p class="workshop-confirmation" id="results-details">We're looking forward to seeing you.</p>
-              </div>
-            </div>
+      <p id="status-text" class="status"></p>
+      <p id="error-text" class="error"></p>
+    </section>
 
-            <div class="composite-section">
-              <h3>Your Adventure Crew</h3>
-              <div class="composite-image-wrap">
-                <img id="composite-image" src="" alt="Adventure crew composite" class="composite-image">
-              </div>
-              <button type="button" class="download-image-btn" id="download-composite" disabled>Download crew image</button>
-            </div>
+    <section class="result hidden" id="result-panel">
+      <h2 class="section-title">Your FLAMES selfie is ready</h2>
+      <p class="section-copy">Download your image and share it to help spread the message.</p>
+      <img id="result-image" alt="Generated FLAMES selfie">
+      <div class="action-row">
+        <a id="download-btn" class="cta" href="#" target="_blank" rel="noopener">Download It</a>
+      </div>
+      <div class="share-row">
+        <input id="share-link" aria-label="Share link" readonly>
+        <button id="copy-link" class="pill" type="button">Copy Share Link</button>
+      </div>
+    </section>
 
-            <button type="button" id="restart-btn" onclick="location.reload()">Change my workshop</button>
-          </div>
-        </div>
-      </template>
-
-    </form>
-  </div>
-
-  <footer class="global-footer">
-    <p>Learn more about <a href="https://www.adventuresinpharma.com" target="_blank">Adventures In Pharma</a> conference
-    </p>
-  </footer>
+    <footer class="page-footer">
+      <p>This tool was created for the FLAMES campaign by <a href="https://www.encephalitis.info" target="_blank" rel="noopener">Encephalitis International</a>.</p>
+      <p class="micro">By uploading a photo you confirm you have permission to use it for this campaign image generator.</p>
+    </footer>
+  </main>
 
   <script src="/static/app.js"></script>
 </body>
-
 </html>
