@@ -5,6 +5,7 @@ import tempfile
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
@@ -53,8 +54,21 @@ def _enforce_origin(request: Request) -> None:
     origin = (request.headers.get("origin") or "").rstrip("/")
     if not origin:
         return
-    allowed = set(request.app.state.settings.allowed_origins)
-    if origin not in allowed:
+    settings = request.app.state.settings
+
+    # Prefer exact origin match if configured.
+    allowed_origins = set(settings.allowed_origins)
+    if origin in allowed_origins:
+        return
+
+    # Fall back to host-based allow (handles http/https mismatches behind TLS-terminating proxies).
+    parsed = urlparse(origin)
+    host = parsed.hostname
+    if not host:
+        raise HTTPException(status_code=403, detail="Origin not allowed")
+    if parsed.scheme not in {"http", "https"}:
+        raise HTTPException(status_code=403, detail="Origin not allowed")
+    if host not in set(settings.allowed_hosts):
         raise HTTPException(status_code=403, detail="Origin not allowed")
 
 

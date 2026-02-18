@@ -10,19 +10,17 @@
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body data-page="share" data-result-id="{{ result_id }}">
+  {% set header_kicker = "Shared from the FLAMES campaign" %}
+  {% set header_title = "Your FLAMES selfie" %}
+  {% set header_copy = "Save this image and post it to support awareness." %}
+  {% set footer_variant = "share" %}
+
   <div class="backdrop one"></div>
   <div class="backdrop two"></div>
   <div class="backdrop three"></div>
 
   <main class="shell share-shell">
-    <header class="hero">
-      <div class="brand-row">
-      <img class="flames-logo" src="/static/campaign/flames-logo.png" alt="FLAMES">      </div>
-
-      <p class="kicker"></p>
-      <h1>Your FLAMES selfie</h1>
-      <p class="hero-copy">Save this image and post it to support awareness.</p>
-    </header>
+    {% include "_header.html" %}
 
     <section class="result" id="share-result-panel">
       <div id="share-progress" class="progress-panel hidden" aria-live="polite">
@@ -40,10 +38,7 @@
       <p id="error-text" class="error"></p>
     </section>
 
-    <footer class="page-footer">
-      <p>Find out more about FLAMES at <a href="https://www.encephalitis.info" target="_blank" rel="noopener">encephalitis.info</a>.</p>
-      <p class="micro">Created with the help of AI by the humans at <a href="https://caminocomms.com" target="_blank" rel="noopener">Camino Communications</a>.</p>
-    </footer>
+    {% include "_footer.html" %}
   </main>
 
   <script src="/static/app.js"></script>

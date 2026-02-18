@@ -11,22 +11,17 @@
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body data-page="generate">
+  {% set header_kicker = "" %}
+  {% set header_title = "Make your FLAMES selfie" %}
+  {% set header_copy = "" %}
+  {% set footer_variant = "index" %}
+
   <div class="backdrop one"></div>
   <div class="backdrop two"></div>
   <div class="backdrop three"></div>
 
   <main class="shell">
-    <header class="hero">
-      <div class="brand-row">
-      <img class="flames-logo" src="/static/campaign/flames-logo.png" alt="FLAMES">
-      </div>
-      <p class="kicker"></p>
-      <h1>Make your FLAMES selfie</h1>
-      <p class="hero-copy"></p>
-      <ul class="promise-list" aria-label="What you will get">
-        <!-- <li>Square image ready for social posts</li> -->
-      </ul>
-    </header>
+    {% include "_header.html" %}
 
     <section class="story-strip" id="how-it-works" aria-label="How it works">
       <article>
@@ -98,11 +93,7 @@
       </div>
     </section>
 
-    <footer class="page-footer">
-      <p>This tool was created for the FLAMES campaign by <a href="https://www.encephalitis.info" target="_blank" rel="noopener">Encephalitis International</a>.</p>
-      <p class="micro">Created with the help of AI by the humans at <a href="https://caminocomms.com" target="_blank" rel="noopener">Camino Communications</a>.</p>
-      <p class="micro">By uploading a photo you confirm you have permission to use it for this campaign image generator.</p>
-    </footer>
+    {% include "_footer.html" %}
   </main>
 
   <script src="/static/app.js"></script>

@@ -1,0 +1,13 @@
+<header class="hero">
+  <div class="brand-row">
+    <img class="flames-logo" src="/static/campaign/flames-logo.png" alt="FLAMES">
+  </div>
+  {% if header_kicker %}
+  <p class="kicker">{{ header_kicker }}</p>
+  {% endif %}
+  <h1>{{ header_title }}</h1>
+  {% if header_copy %}
+  <p class="hero-copy">{{ header_copy }}</p>
+  {% endif %}
+</header>
+
