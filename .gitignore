@@ -8,3 +8,4 @@ test/
 /.venv
 .python-version
 /source_images
+app/data/results.db
