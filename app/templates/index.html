@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FLAMES Selfie Generator | Encephalitis International</title>
+  <title>F.L.A.M.E.S Selfie Generator | Encephalitis International</title>
   <meta property="og:type" content="website">
   <meta property="og:title" content="Make Your FLAMES Selfie">
-  <meta property="og:description" content="Turn your photo into a classic 1970s firefighter portrait in FLAMES campaign colors.">
+  <meta property="og:description" content="Show your support for the Encephalitis International F.L.A.M.E.S campaign">
   <meta property="og:image" content="/static/campaign/flames-logo.png">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
@@ -18,16 +18,13 @@
   <main class="shell">
     <header class="hero">
       <div class="brand-row">
-        <img class="ei-logo" src="/static/campaign/ei-logo.png" alt="Encephalitis International">
-      </div>
       <img class="flames-logo" src="/static/campaign/flames-logo.png" alt="FLAMES">
-      <p class="kicker">One photo. One click. One powerful share.</p>
+      </div>
+      <p class="kicker"></p>
       <h1>Make your FLAMES selfie</h1>
-      <p class="hero-copy">Upload a photo or use your camera and we will transform it into a nostalgic 1970s firefighter portrait in FLAMES campaign colours, finished with the campaign frame.</p>
+      <p class="hero-copy"></p>
       <ul class="promise-list" aria-label="What you will get">
-        <li>Square image ready for social posts</li>
-        <li>Unique share link for friends and supporters</li>
-        <li>Instant download for your channels</li>
+        <!-- <li>Square image ready for social posts</li> -->
       </ul>
     </header>
 
@@ -48,8 +45,8 @@
 
     <section class="studio" id="studio-panel">
       <div id="create-content">
-        <h2 class="section-title">Create your image</h2>
-        <p class="section-copy">Choose upload or camera. Your original image is processed to create your campaign result.</p>
+        <!-- <h2 class="section-title">Create your image</h2>
+        <p class="section-copy">Choose upload or camera. Your original image is processed to create your campaign result.</p> -->
 
         <div class="picker-row">
           <label class="pill control-pill">
@@ -59,17 +56,18 @@
           <button class="pill" id="start-camera" type="button">Use Camera</button>
         </div>
 
-        <div id="camera-panel" class="camera-panel hidden">
-          <video id="camera-video" autoplay playsinline></video>
-          <canvas id="capture-canvas" class="hidden"></canvas>
-          <div class="picker-row compact">
-            <button class="pill" id="capture-btn" type="button">Capture</button>
-            <button class="pill secondary" id="retake-btn" type="button">Retake</button>
+        <div class="preview-wrap">
+          <div class="preview-frame" id="photo-preview-frame">
+            <div class="preview-placeholder" id="photo-placeholder">Selected photo preview</div>
+            <video id="camera-video" class="preview-video hidden" autoplay playsinline></video>
+            <canvas id="capture-canvas" class="hidden"></canvas>
+            <img id="photo-preview" class="hidden" alt="Selected photo preview">
           </div>
         </div>
 
-        <div class="preview-wrap">
-          <img id="photo-preview" alt="Selected photo preview">
+        <div class="picker-row compact camera-actions hidden" id="camera-actions">
+          <button class="pill" id="capture-btn" type="button">Capture</button>
+          <button class="pill secondary" id="retake-btn" type="button">Retake</button>
         </div>
 
         <div class="action-row">
@@ -80,7 +78,7 @@
       <div id="progress-panel" class="progress-panel hidden" aria-live="polite">
         <div class="spinner" aria-hidden="true"></div>
         <h3>Creating your FLAMES selfie</h3>
-        <p>This usually takes around 30 seconds.</p>
+        <p></p>
       </div>
 
       <p id="status-text" class="status"></p>
@@ -102,6 +100,7 @@
 
     <footer class="page-footer">
       <p>This tool was created for the FLAMES campaign by <a href="https://www.encephalitis.info" target="_blank" rel="noopener">Encephalitis International</a>.</p>
+      <p class="micro">Created with the help of AI by the humans at <a href="https://caminocomms.com" target="_blank" rel="noopener">Camino Communications</a>.</p>
       <p class="micro">By uploading a photo you confirm you have permission to use it for this campaign image generator.</p>
     </footer>
   </main>

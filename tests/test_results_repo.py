@@ -17,6 +17,8 @@ def test_result_persistence_and_expiry(tmp_path):
         expires_at=expires.isoformat(),
         prompt_version="v1",
         user_agent_hash="deadbeef",
+        client_request_id="req-1",
+        ip_hash="ip-1",
     )
     repo.mark_ready(
         result_id="abc123",

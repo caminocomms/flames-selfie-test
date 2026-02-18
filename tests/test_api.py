@@ -13,6 +13,8 @@ def _seed_ready_result(app, result_id: str, expires_at: str):
         expires_at=expires_at,
         prompt_version="v1",
         user_agent_hash=None,
+        client_request_id=None,
+        ip_hash=None,
     )
     app.state.repo.mark_ready(
         result_id=result_id,
@@ -35,7 +37,9 @@ def test_get_result_ready(monkeypatch, tmp_path):
         assert response.status_code == 200
         payload = response.json()
         assert payload["result_id"] == "ready-1"
+        assert payload["status"] == "ready"
         assert payload["share_url"].endswith("/r/ready-1")
+        assert payload["image_url"].endswith("/api/selfie/result/ready-1/image")
 
 
 def test_get_result_expired(monkeypatch, tmp_path):
@@ -47,7 +51,8 @@ def test_get_result_expired(monkeypatch, tmp_path):
         _seed_ready_result(app, "expired-1", expires)
 
         response = client.get("/api/selfie/result/expired-1")
-        assert response.status_code == 410
+        assert response.status_code == 200
+        assert response.json()["status"] == "expired"
 
 
 def test_share_page_renders(monkeypatch, tmp_path):

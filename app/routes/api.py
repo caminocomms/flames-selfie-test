@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import io
 import tempfile
@@ -5,20 +6,21 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from PIL import Image
 
-from app.clients.fal_client import FalAPIClient
+from app.services.job_runner import run_generation_job
 from app.services.image_pipeline import (
     ValidationError,
-    build_final_campaign_image,
-    download_generated_image,
+    MAX_UPLOAD_BYTES,
     validate_upload_bytes,
 )
+from app.services.ratelimit import RateLimitExceeded
 
 router = APIRouter()
 PROMPT_VERSION = "v1-fireman-1970s-ei"
+RETRY_AFTER_SECONDS = 2
 MIME_EXT = {
     "image/jpeg": "jpg",
     "image/png": "png",
@@ -26,111 +28,192 @@ MIME_EXT = {
 }
 
 
-def _to_png_bytes(image: Image.Image) -> bytes:
-    buf = io.BytesIO()
-    image.save(buf, format="PNG")
-    return buf.getvalue()
-
-
 def _is_expired(expires_at: str) -> bool:
     expires = datetime.fromisoformat(expires_at)
     return datetime.now(timezone.utc) >= expires
 
 
-def _build_result_payload(request: Request, row) -> dict:
-    if _is_expired(row.expires_at):
-        raise HTTPException(status_code=410, detail="Result link has expired")
-    if row.status != "ready" or not row.final_object_key:
-        raise HTTPException(status_code=404, detail="Result not available")
+def _get_client_ip(request: Request) -> str:
+    settings = request.app.state.settings
+    if settings.trust_proxy_headers:
+        cf_ip = request.headers.get("cf-connecting-ip")
+        if cf_ip:
+            return cf_ip.strip()
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
+
+def _hash_ip(ip: str) -> str:
+    return hashlib.sha256(ip.encode("utf-8")).hexdigest()
+
+
+def _enforce_origin(request: Request) -> None:
+    origin = (request.headers.get("origin") or "").rstrip("/")
+    if not origin:
+        return
+    allowed = set(request.app.state.settings.allowed_origins)
+    if origin not in allowed:
+        raise HTTPException(status_code=403, detail="Origin not allowed")
+
+
+def _build_result_payload(request: Request, row) -> dict:
     base = str(request.base_url).rstrip("/")
-    return {
+    if _is_expired(row.expires_at):
+        return {
+            "result_id": row.id,
+            "status": "expired",
+            "share_url": f"{base}/r/{row.id}",
+            "expires_at": row.expires_at,
+        }
+
+    payload: dict = {
         "result_id": row.id,
         "share_url": f"{base}/r/{row.id}",
-        "download_url": f"{base}/api/selfie/result/{row.id}/download",
-        "image_url": f"{base}/api/selfie/result/{row.id}/image",
         "expires_at": row.expires_at,
     }
 
+    if row.status == "ready" and row.final_object_key:
+        payload.update(
+            {
+                "status": "ready",
+                "download_url": f"{base}/api/selfie/result/{row.id}/download",
+                "image_url": f"{base}/api/selfie/result/{row.id}/image",
+            }
+        )
+        return payload
 
-@router.post("/selfie/generate")
-async def generate_selfie(request: Request, photo: UploadFile = File(...)) -> dict:
+    if row.status == "failed":
+        payload.update({"status": "failed", "error_message": row.error_message or "Generation failed."})
+        return payload
+
+    payload.update({"status": "processing", "retry_after_seconds": RETRY_AFTER_SECONDS})
+    return payload
+
+
+@router.post("/selfie/generate", status_code=202)
+async def generate_selfie(
+    request: Request,
+    photo: UploadFile = File(...),
+    client_request_id: str | None = Form(None),
+) -> dict:
     settings = request.app.state.settings
     repo = request.app.state.repo
     storage = request.app.state.storage
     if storage is None:
         raise HTTPException(status_code=503, detail="Storage is not configured")
 
-    photo_bytes = await photo.read()
-    content_type = photo.content_type
+    _enforce_origin(request)
+    client_ip = _get_client_ip(request)
 
+    scheduled = False
     try:
-        validate_upload_bytes(photo_bytes, content_type)
-    except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if not client_request_id:
+            # Backwards compatibility: allow missing idempotency, but strongly prefer client-provided IDs.
+            client_request_id = str(uuid.uuid4())
 
-    result_id = str(uuid.uuid4())
-    created_at = datetime.now(timezone.utc)
-    expires_at = created_at + timedelta(days=settings.selfie_ttl_days)
-    user_agent = request.headers.get("user-agent", "")
-    user_agent_hash = hashlib.sha256(user_agent.encode("utf-8")).hexdigest()[:32] if user_agent else None
-
-    repo.create_processing_result(
-        result_id=result_id,
-        created_at=created_at.isoformat(),
-        expires_at=expires_at.isoformat(),
-        prompt_version=PROMPT_VERSION,
-        user_agent_hash=user_agent_hash,
-    )
-
-    extension = MIME_EXT.get(content_type or "", "png")
-    upload_key = f"selfies/{result_id}/upload.{extension}"
-    generated_key = f"selfies/{result_id}/generated.png"
-    final_key = f"selfies/{result_id}/final.png"
-
-    try:
-        storage.upload_bytes(upload_key, photo_bytes, content_type or "application/octet-stream")
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{extension}") as tmp:
-            tmp.write(photo_bytes)
-            tmp_path = Path(tmp.name)
+        ip_hash = _hash_ip(client_ip)
+        existing = repo.get_by_client_request_id(ip_hash, client_request_id)
+        if existing:
+            return _build_result_payload(request, existing)
 
         try:
-            fal_client = FalAPIClient()
-            generated_url = fal_client.generate_firefighter_image(tmp_path)
-        finally:
-            tmp_path.unlink(missing_ok=True)
+            request.app.state.rate_limiter.check(client_ip)
+        except RateLimitExceeded as exc:
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded",
+                headers={"Retry-After": str(exc.retry_after_seconds)},
+            ) from exc
 
-        generated_image = download_generated_image(generated_url)
-        generated_png = _to_png_bytes(generated_image)
-        storage.upload_bytes(generated_key, generated_png, "image/png")
+        async with request.app.state.gen_inflight_lock:
+            if request.app.state.gen_inflight >= settings.gen_max_queue:
+                raise HTTPException(status_code=429, detail="Too many requests, please try again soon")
+            request.app.state.gen_inflight += 1
 
-        final_bytes = build_final_campaign_image(generated_image, settings.frame_asset_path)
-        final_public_url = storage.upload_bytes(final_key, final_bytes, "image/png")
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                if int(content_length) > int(MAX_UPLOAD_BYTES) + (1024 * 1024):
+                    raise HTTPException(status_code=413, detail="Image is too large. Maximum size is 10MB.")
+            except ValueError:
+                pass
 
-        repo.mark_ready(
+        # Read with a hard cap to avoid unbounded memory usage.
+        photo_buffer = bytearray()
+        while True:
+            chunk = await photo.read(1024 * 1024)
+            if not chunk:
+                break
+            photo_buffer.extend(chunk)
+            if len(photo_buffer) > MAX_UPLOAD_BYTES:
+                raise HTTPException(status_code=413, detail="Image is too large. Maximum size is 10MB.")
+        photo_bytes = bytes(photo_buffer)
+        content_type = photo.content_type
+
+        try:
+            validate_upload_bytes(photo_bytes, content_type)
+        except ValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        result_id = str(uuid.uuid4())
+        created_at = datetime.now(timezone.utc)
+        expires_at = created_at + timedelta(days=settings.selfie_ttl_days)
+        user_agent = request.headers.get("user-agent", "")
+        user_agent_hash = hashlib.sha256(user_agent.encode("utf-8")).hexdigest()[:32] if user_agent else None
+
+        repo.create_processing_result(
             result_id=result_id,
-            upload_object_key=upload_key,
-            generated_object_key=generated_key,
-            final_object_key=final_key,
-            public_image_url=final_public_url,
+            created_at=created_at.isoformat(),
+            expires_at=expires_at.isoformat(),
+            prompt_version=PROMPT_VERSION,
+            user_agent_hash=user_agent_hash,
+            client_request_id=client_request_id,
+            ip_hash=ip_hash,
         )
-    except Exception as exc:
-        repo.mark_failed(result_id, "Generation failed")
-        raise HTTPException(status_code=500, detail="Failed to generate selfie") from exc
 
-    row = repo.get_result(result_id)
-    if not row:
-        raise HTTPException(status_code=500, detail="Result save failed")
-    return _build_result_payload(request, row)
+        extension = MIME_EXT.get(content_type or "", "png")
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{extension}") as tmp:
+            tmp.write(photo_bytes)
+            tmp_path = tmp.name
+
+        row = repo.get_result(result_id)
+        if not row:
+            raise HTTPException(status_code=500, detail="Result save failed")
+        # Background job continues even if the user refreshes.
+        asyncio.create_task(
+            run_generation_job(
+                request.app,
+                result_id,
+                tmp_path,
+                extension,
+                content_type or "application/octet-stream",
+            )
+        )
+        scheduled = True
+        return _build_result_payload(request, row)
+    finally:
+        if not scheduled:
+            async with request.app.state.gen_inflight_lock:
+                request.app.state.gen_inflight = max(0, request.app.state.gen_inflight - 1)
 
 
 @router.get("/selfie/result/{result_id}")
 async def get_result(request: Request, result_id: str) -> dict:
     repo = request.app.state.repo
+    settings = request.app.state.settings
     row = repo.get_result(result_id)
     if not row:
         raise HTTPException(status_code=404, detail="Result not found")
+    if row.status == "processing":
+        try:
+            created = datetime.fromisoformat(row.created_at)
+            if datetime.now(timezone.utc) - created > timedelta(seconds=settings.processing_timeout_seconds):
+                repo.mark_failed(result_id, "Timed out. Please try again.", internal_error_code="TIMED_OUT")
+                row = repo.get_result(result_id) or row
+        except Exception:
+            pass
     return _build_result_payload(request, row)
 
 
@@ -144,7 +227,10 @@ async def download_result(request: Request, result_id: str):
     row = repo.get_result(result_id)
     if not row:
         raise HTTPException(status_code=404, detail="Result not found")
-    _build_result_payload(request, row)
+    if _is_expired(row.expires_at):
+        raise HTTPException(status_code=410, detail="Result link has expired")
+    if row.status != "ready" or not row.final_object_key:
+        raise HTTPException(status_code=409, detail="Result not ready")
     signed_url = storage.presigned_get_url(
         row.final_object_key,
         expires_in=settings.s3_signed_url_ttl_seconds,
@@ -163,7 +249,10 @@ async def image_result(request: Request, result_id: str):
     row = repo.get_result(result_id)
     if not row:
         raise HTTPException(status_code=404, detail="Result not found")
-    _build_result_payload(request, row)
+    if _is_expired(row.expires_at):
+        raise HTTPException(status_code=410, detail="Result link has expired")
+    if row.status != "ready" or not row.final_object_key:
+        raise HTTPException(status_code=409, detail="Result not ready")
     signed_url = storage.presigned_get_url(
         row.final_object_key,
         expires_in=settings.s3_signed_url_ttl_seconds,

@@ -2,9 +2,24 @@ function byId(id) {
   return document.getElementById(id);
 }
 
+function uuidv4() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  for (let i = 0; i < bytes.length; i += 1) {
+    bytes[i] = Math.floor(Math.random() * 256);
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 async function postGenerate(photoBlob) {
   const formData = new FormData();
   formData.append("photo", photoBlob, "photo.png");
+  formData.append("client_request_id", uuidv4());
 
   const response = await fetch("/api/selfie/generate", {
     method: "POST",
@@ -28,7 +43,7 @@ async function fetchResult(resultId) {
   return response.json();
 }
 
-  function renderResult(payload) {
+function renderResult(payload) {
   const resultPanel = byId("result-panel") || byId("share-result-panel");
   const resultImage = byId("result-image");
   const downloadBtn = byId("download-btn");
@@ -48,13 +63,28 @@ async function fetchResult(resultId) {
   }
 }
 
+async function pollUntilDone(resultId, onUpdate) {
+  while (true) {
+    const payload = await fetchResult(resultId);
+    if (onUpdate) {
+      onUpdate(payload);
+    }
+    if (payload.status === "ready" || payload.status === "failed" || payload.status === "expired") {
+      return payload;
+    }
+    const waitSeconds = Number(payload.retry_after_seconds || 2);
+    await new Promise((resolve) => setTimeout(resolve, Math.max(1, waitSeconds) * 1000));
+  }
+}
+
 function initGeneratePage() {
   const body = document.body;
   const createContent = byId("create-content");
   const progressPanel = byId("progress-panel");
+  const photoPlaceholder = byId("photo-placeholder");
+  const cameraActions = byId("camera-actions");
   const uploadInput = byId("photo-upload");
   const startCameraBtn = byId("start-camera");
-  const cameraPanel = byId("camera-panel");
   const cameraVideo = byId("camera-video");
   const captureCanvas = byId("capture-canvas");
   const captureBtn = byId("capture-btn");
@@ -68,6 +98,28 @@ function initGeneratePage() {
   let stream = null;
   let selectedBlob = null;
   let cameraReady = false;
+  const pendingKey = "pending_result_id";
+
+  function showCameraActions(show) {
+    if (cameraActions) {
+      cameraActions.classList.toggle("hidden", !show);
+    }
+  }
+
+  function showPlaceholder(show) {
+    if (photoPlaceholder) {
+      photoPlaceholder.classList.toggle("hidden", !show);
+    }
+    if (preview) {
+      preview.classList.toggle("hidden", show);
+    }
+  }
+
+  function showCameraVideo(show) {
+    if (cameraVideo) {
+      cameraVideo.classList.toggle("hidden", !show);
+    }
+  }
 
   function setError(message) {
     if (errorText) {
@@ -93,8 +145,20 @@ function initGeneratePage() {
   function setSelected(blob, previewUrl) {
     selectedBlob = blob;
     generateBtn.disabled = !selectedBlob;
+    showPlaceholder(false);
+    showCameraVideo(false);
+    showCameraActions(true);
+    if (captureBtn) {
+      captureBtn.classList.add("hidden");
+    }
+    if (retakeBtn) {
+      retakeBtn.classList.remove("hidden");
+      retakeBtn.disabled = false;
+    }
+    preview.onload = () => {
+      preview.classList.add("ready");
+    };
     preview.src = previewUrl;
-    preview.classList.add("ready");
     setError("");
   }
 
@@ -104,17 +168,26 @@ function initGeneratePage() {
       stream = null;
     }
     cameraReady = false;
-    cameraPanel.classList.add("hidden");
-    cameraVideo.classList.remove("hidden");
-    captureBtn.classList.remove("hidden");
-    retakeBtn.classList.add("hidden");
-    retakeBtn.disabled = true;
+    showCameraVideo(false);
+    showCameraActions(false);
+    if (captureBtn) {
+      captureBtn.classList.remove("hidden");
+    }
+    if (retakeBtn) {
+      retakeBtn.classList.add("hidden");
+      retakeBtn.disabled = true;
+    }
   }
 
   function resetPreviewSelection() {
     selectedBlob = null;
-    preview.classList.remove("ready");
-    preview.src = "";
+    if (preview) {
+      preview.classList.remove("ready");
+      preview.onload = null;
+      preview.src = "";
+    }
+    showPlaceholder(true);
+    showCameraVideo(false);
     generateBtn.disabled = true;
   }
 
@@ -140,11 +213,16 @@ function initGeneratePage() {
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       cameraVideo.srcObject = stream;
       await cameraVideo.play();
-      cameraPanel.classList.remove("hidden");
-      cameraVideo.classList.remove("hidden");
-      captureBtn.classList.remove("hidden");
-      retakeBtn.classList.add("hidden");
-      retakeBtn.disabled = true;
+      showPlaceholder(false);
+      showCameraVideo(true);
+      showCameraActions(true);
+      if (captureBtn) {
+        captureBtn.classList.remove("hidden");
+      }
+      if (retakeBtn) {
+        retakeBtn.classList.add("hidden");
+        retakeBtn.disabled = true;
+      }
       cameraReady = true;
     } catch (err) {
       setError("Camera access failed. Please upload a photo instead.");
@@ -157,8 +235,11 @@ function initGeneratePage() {
       return;
     }
     stopCamera();
-    retakeBtn.classList.add("hidden");
-    retakeBtn.disabled = true;
+    showCameraActions(false);
+    if (retakeBtn) {
+      retakeBtn.classList.add("hidden");
+      retakeBtn.disabled = true;
+    }
     setSelected(file, URL.createObjectURL(file));
   });
 
@@ -179,10 +260,6 @@ function initGeneratePage() {
       }
 
       setSelected(blob, URL.createObjectURL(blob));
-      cameraVideo.classList.add("hidden");
-      captureBtn.classList.add("hidden");
-      retakeBtn.classList.remove("hidden");
-      retakeBtn.disabled = false;
     }, "image/png");
   });
 
@@ -192,8 +269,12 @@ function initGeneratePage() {
       await startCameraSession();
       return;
     }
-    cameraVideo.classList.remove("hidden");
-    captureBtn.classList.remove("hidden");
+    showPlaceholder(false);
+    showCameraVideo(true);
+    showCameraActions(true);
+    if (captureBtn) {
+      captureBtn.classList.remove("hidden");
+    }
     retakeBtn.classList.add("hidden");
     retakeBtn.disabled = true;
   });
@@ -202,24 +283,39 @@ function initGeneratePage() {
     if (!selectedBlob) {
       return;
     }
+    const uploadBlob = selectedBlob;
 
     generateBtn.disabled = true;
     setGeneratingState(true);
-    preview.classList.remove("ready");
-    preview.src = "";
     setStatus("Building your FLAMES selfie. This usually takes around 30 seconds.");
     setError("");
 
     try {
-      const payload = await postGenerate(selectedBlob);
-      renderResult(payload);
-      setStatus("Done. Your image is ready to download and share.");
-      body.classList.add("result-live");
-      stopCamera();
+      const payload = await postGenerate(uploadBlob);
+      localStorage.setItem(pendingKey, payload.result_id);
+      const finalPayload = await pollUntilDone(payload.result_id);
+      localStorage.removeItem(pendingKey);
+
+      if (finalPayload.status === "ready") {
+        renderResult(finalPayload);
+        setStatus("Done. Your image is ready to download and share.");
+        body.classList.add("result-live");
+        stopCamera();
+        return;
+      }
+
+      if (finalPayload.status === "expired") {
+        setError("This link has expired. Please generate a new image.");
+      } else {
+        setError(finalPayload.error_message || "We could not generate that image. Please try again.");
+      }
+      setStatus("");
+      setGeneratingState(false);
     } catch (err) {
       setError(err.message || "We could not generate that image. Please try again.");
       setStatus("");
       setGeneratingState(false);
+      localStorage.removeItem(pendingKey);
     } finally {
       generateBtn.disabled = !selectedBlob;
     }
@@ -242,13 +338,51 @@ function initGeneratePage() {
       }
     });
   }
+
+  const pendingResultId = localStorage.getItem(pendingKey);
+  if (pendingResultId) {
+    setGeneratingState(true);
+    setStatus("Resuming your FLAMES selfie. Please wait.");
+    pollUntilDone(pendingResultId)
+      .then((finalPayload) => {
+        if (finalPayload.status === "ready") {
+          renderResult(finalPayload);
+          body.classList.add("result-live");
+          setStatus("Done. Your image is ready to download and share.");
+          return;
+        }
+        if (finalPayload.status === "expired") {
+          setError("This link has expired. Please generate a new image.");
+        } else {
+          setError(finalPayload.error_message || "We could not generate that image. Please try again.");
+        }
+        setStatus("");
+        setGeneratingState(false);
+      })
+      .finally(() => {
+        localStorage.removeItem(pendingKey);
+      });
+  }
 }
 
 async function initSharePage(resultId) {
   const errorText = byId("error-text");
+  const progressPanel = byId("share-progress");
   try {
-    const payload = await fetchResult(resultId);
-    renderResult(payload);
+    if (progressPanel) {
+      progressPanel.classList.remove("hidden");
+    }
+    const finalPayload = await pollUntilDone(resultId);
+    if (finalPayload.status === "ready") {
+      if (progressPanel) {
+        progressPanel.classList.add("hidden");
+      }
+      renderResult(finalPayload);
+      return;
+    }
+    if (errorText) {
+      errorText.textContent = finalPayload.error_message || "This link is unavailable right now.";
+    }
   } catch (err) {
     if (errorText) {
       errorText.textContent = err.message || "This link is unavailable right now.";
