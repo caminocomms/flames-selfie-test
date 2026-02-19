@@ -13,6 +13,7 @@ ASPECT_RATIO = "1:1"
 
 LOCKED_PROMPT = """Transform the person in the uploaded photo into a photorealistic classic 1970s firefighter portrait.
 Preserve facial identity while changing clothing and styling.
+Always include a classic firefighter helmet on the subject (helmet must be clearly visible).
 Use an outfit palette inspired by Encephalitis International campaign colors: warm orange, deep navy, and light cream accents.
 Apply the nostalgic treatment directly in the generated image: subtle film grain, warm faded color grading, soft contrast, and a slight vintage haze.
 No logos or text.
