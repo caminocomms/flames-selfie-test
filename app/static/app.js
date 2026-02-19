@@ -16,9 +16,124 @@ function uuidv4() {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const OPT_MAX_DIMENSION = 1536;
+const OPT_MIME = "image/jpeg";
+const OPT_QUALITY_START = 0.92;
+const OPT_QUALITY_MIN = 0.72;
+const OPT_QUALITY_STEP = 0.06;
+
+function _sourceSize(source) {
+  const width = typeof source.naturalWidth === "number" ? source.naturalWidth : source.width;
+  const height = typeof source.naturalHeight === "number" ? source.naturalHeight : source.height;
+  return { width, height };
+}
+
+function _canvasToBlob(canvas, mime, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("Could not process that photo. Please try another image."));
+        return;
+      }
+      resolve(blob);
+    }, mime, quality);
+  });
+}
+
+async function _decodeImageSource(blob) {
+  if (typeof createImageBitmap !== "undefined") {
+    try {
+      return await createImageBitmap(blob, { imageOrientation: "from-image" });
+    } catch (err) {
+      try {
+        return await createImageBitmap(blob);
+      } catch (innerErr) {
+        // fall through to Image() decode
+      }
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not read that photo. Please choose a different image."));
+    };
+    img.src = url;
+  });
+}
+
+async function optimizePhotoForUpload(inputBlob) {
+  const source = await _decodeImageSource(inputBlob);
+  const { width: srcW, height: srcH } = _sourceSize(source);
+  if (!srcW || !srcH) {
+    throw new Error("Could not read that photo. Please choose a different image.");
+  }
+
+  let targetW = srcW;
+  let targetH = srcH;
+  const maxDim = Math.max(srcW, srcH);
+  if (maxDim > OPT_MAX_DIMENSION) {
+    const scale = OPT_MAX_DIMENSION / maxDim;
+    targetW = Math.max(1, Math.round(srcW * scale));
+    targetH = Math.max(1, Math.round(srcH * scale));
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetW;
+  canvas.height = targetH;
+  let ctx = canvas.getContext("2d");
+  ctx.drawImage(source, 0, 0, targetW, targetH);
+
+  let quality = OPT_QUALITY_START;
+  let outBlob = await _canvasToBlob(canvas, OPT_MIME, quality);
+
+  while (outBlob.size > MAX_UPLOAD_BYTES && quality > OPT_QUALITY_MIN) {
+    quality = Math.max(OPT_QUALITY_MIN, quality - OPT_QUALITY_STEP);
+    outBlob = await _canvasToBlob(canvas, OPT_MIME, quality);
+    if (quality === OPT_QUALITY_MIN) {
+      break;
+    }
+  }
+
+  if (outBlob.size > MAX_UPLOAD_BYTES) {
+    // Last resort: scale down further based on size ratio and re-encode at min quality.
+    const shrink = Math.sqrt(MAX_UPLOAD_BYTES / outBlob.size) * 0.92;
+    const newW = Math.max(512, Math.floor(targetW * shrink));
+    const newH = Math.max(512, Math.floor(targetH * shrink));
+    if (newW < targetW || newH < targetH) {
+      canvas.width = newW;
+      canvas.height = newH;
+      ctx = canvas.getContext("2d");
+      ctx.drawImage(source, 0, 0, newW, newH);
+      outBlob = await _canvasToBlob(canvas, OPT_MIME, OPT_QUALITY_MIN);
+    }
+  }
+
+  if (typeof source.close === "function") {
+    try {
+      source.close();
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  if (outBlob.size > MAX_UPLOAD_BYTES) {
+    throw new Error("That photo is too large to upload. Please choose a smaller image.");
+  }
+
+  return outBlob;
+}
+
 async function postGenerate(photoBlob) {
   const formData = new FormData();
-  formData.append("photo", photoBlob, "photo.png");
+  formData.append("photo", photoBlob, "photo.jpg");
   formData.append("client_request_id", uuidv4());
 
   const response = await fetch("/api/selfie/generate", {
@@ -121,10 +236,18 @@ function initGeneratePage() {
   let selectedBlob = null;
   let cameraReady = false;
   const pendingKey = "pending_result_id";
+  const defaultPlaceholder = photoPlaceholder ? photoPlaceholder.textContent : "Selected photo preview";
+  let previewObjectUrl = null;
 
   function showCameraActions(show) {
     if (cameraActions) {
       cameraActions.classList.toggle("hidden", !show);
+    }
+  }
+
+  function setPlaceholderText(text) {
+    if (photoPlaceholder) {
+      photoPlaceholder.textContent = text;
     }
   }
 
@@ -177,6 +300,11 @@ function initGeneratePage() {
       retakeBtn.classList.remove("hidden");
       retakeBtn.disabled = false;
     }
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+      previewObjectUrl = null;
+    }
+    previewObjectUrl = previewUrl;
     preview.onload = () => {
       preview.classList.add("ready");
     };
@@ -208,6 +336,11 @@ function initGeneratePage() {
       preview.onload = null;
       preview.src = "";
     }
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+      previewObjectUrl = null;
+    }
+    setPlaceholderText(defaultPlaceholder);
     showPlaceholder(true);
     showCameraVideo(false);
     generateBtn.disabled = true;
@@ -217,7 +350,12 @@ function initGeneratePage() {
     const sourceW = sourceVideo.videoWidth;
     const sourceH = sourceVideo.videoHeight;
     const minDimension = Math.min(sourceW, sourceH);
-    const scale = minDimension < 512 ? 512 / minDimension : 1;
+    const scaleUp = minDimension < 512 ? 512 / minDimension : 1;
+    const scaledW = sourceW * scaleUp;
+    const scaledH = sourceH * scaleUp;
+    const maxDimension = Math.max(scaledW, scaledH);
+    const scaleDown = maxDimension > OPT_MAX_DIMENSION ? OPT_MAX_DIMENSION / maxDimension : 1;
+    const scale = scaleUp * scaleDown;
     const targetW = Math.round(sourceW * scale);
     const targetH = Math.round(sourceH * scale);
 
@@ -262,7 +400,20 @@ function initGeneratePage() {
       retakeBtn.classList.add("hidden");
       retakeBtn.disabled = true;
     }
-    setSelected(file, URL.createObjectURL(file));
+    setError("");
+    setPlaceholderText("Optimising your photo for upload...");
+    showPlaceholder(true);
+    showCameraVideo(false);
+    generateBtn.disabled = true;
+    optimizePhotoForUpload(file)
+      .then((optimizedBlob) => {
+        setPlaceholderText(defaultPlaceholder);
+        setSelected(optimizedBlob, URL.createObjectURL(optimizedBlob));
+      })
+      .catch((err) => {
+        resetPreviewSelection();
+        setError(err.message || "Could not read that photo. Please try another image.");
+      });
   });
 
   startCameraBtn.addEventListener("click", async () => {
@@ -282,7 +433,7 @@ function initGeneratePage() {
       }
 
       setSelected(blob, URL.createObjectURL(blob));
-    }, "image/png");
+    }, "image/jpeg", OPT_QUALITY_START);
   });
 
   retakeBtn.addEventListener("click", async () => {
