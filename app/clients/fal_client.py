@@ -6,7 +6,7 @@ import fal_client
 load_dotenv()
 
 
-OUTPUT_FORMAT = "png"
+OUTPUT_FORMAT = "jpeg"
 NUM_IMAGES = 1
 FAL_MODEL = "fal-ai/nano-banana/edit"
 ASPECT_RATIO = "1:1"
