@@ -109,6 +109,16 @@ body::after {
   justify-content: center;
 }
 
+.brand-row a {
+  display: inline-flex;
+}
+
+.brand-row a:focus-visible {
+  outline: 3px solid rgba(206, 18, 46, 0.55);
+  outline-offset: 8px;
+  border-radius: 30px;
+}
+
 .ei-logo {
   max-width: min(360px, 86%);
 }

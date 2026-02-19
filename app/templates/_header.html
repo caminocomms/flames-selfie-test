@@ -1,6 +1,8 @@
 <header class="hero">
   <div class="brand-row">
-    <img class="flames-logo" src="/static/campaign/flames-logo.png" alt="FLAMES">
+    <a href="/" aria-label="Home">
+      <img class="flames-logo" src="/static/campaign/flames-logo.png" alt="FLAMES">
+    </a>
   </div>
   {% if header_kicker %}
   <p class="kicker">{{ header_kicker }}</p>
@@ -10,4 +12,3 @@
   <p class="hero-copy">{{ header_copy }}</p>
   {% endif %}
 </header>
-
