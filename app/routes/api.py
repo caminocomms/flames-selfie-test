@@ -50,6 +50,28 @@ def _hash_ip(ip: str) -> str:
     return hashlib.sha256(ip.encode("utf-8")).hexdigest()
 
 
+def _parse_iso_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    try:
+        dt = datetime.fromisoformat(raw)
+    except ValueError:
+        # Handle common "Z" suffix (older data / different serializers).
+        if raw.endswith("Z"):
+            try:
+                dt = datetime.fromisoformat(raw[:-1] + "+00:00")
+            except ValueError:
+                return None
+        else:
+            return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 def _enforce_origin(request: Request) -> None:
     origin = (request.headers.get("origin") or "").rstrip("/")
     if not origin:
@@ -221,13 +243,11 @@ async def get_result(request: Request, result_id: str) -> dict:
     if not row:
         raise HTTPException(status_code=404, detail="Result not found")
     if row.status == "processing":
-        try:
-            created = datetime.fromisoformat(row.created_at)
-            if datetime.now(timezone.utc) - created > timedelta(seconds=settings.processing_timeout_seconds):
+        age_start = _parse_iso_datetime(row.started_at) or _parse_iso_datetime(row.created_at)
+        if age_start:
+            if datetime.now(timezone.utc) - age_start > timedelta(seconds=settings.processing_timeout_seconds):
                 repo.mark_failed(result_id, "Timed out. Please try again.", internal_error_code="TIMED_OUT")
                 row = repo.get_result(result_id) or row
-        except Exception:
-            pass
     return _build_result_payload(request, row)
 
 
