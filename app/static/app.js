@@ -27,8 +27,30 @@ async function postGenerate(photoBlob) {
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.detail || "Could not generate image");
+    let detail = "";
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const body = await response.json().catch(() => ({}));
+      detail = body.detail || "";
+    } else {
+      // Drain response body to avoid leaking a stream (some browsers can warn).
+      await response.text().catch(() => "");
+    }
+
+    if (response.status === 413) {
+      throw new Error("That photo is too large to upload. Please choose a smaller image (max 10MB).");
+    }
+    if (response.status === 429) {
+      throw new Error(detail || "Rate limit exceeded. Please try again in a minute.");
+    }
+    if (response.status === 403) {
+      throw new Error(detail || "Request blocked. Please refresh and try again.");
+    }
+    if (response.status >= 500) {
+      throw new Error("Server error while generating your image. Please try again.");
+    }
+
+    throw new Error(detail || `Could not generate image (HTTP ${response.status}).`);
   }
 
   return response.json();
