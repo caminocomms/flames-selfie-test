@@ -272,7 +272,7 @@ h1 {
 }
 
 .preview-wrap {
-  width: min(600px, 100%);
+  width: min(500px, 100%);
   margin: 1.05rem auto 0;
 }
 
